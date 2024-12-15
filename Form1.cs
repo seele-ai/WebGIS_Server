@@ -19,6 +19,7 @@ using NetTopologySuite;
 using System.IO;
 using System.Net;
 using System.Threading;
+using System.Web;
 
 namespace WindowsFormsApp4
 {
@@ -308,12 +309,143 @@ namespace WindowsFormsApp4
         private void ProcessRequest(HttpListenerContext context)
         {
             string url = context.Request.Url.AbsolutePath;
+            string query = context.Request.Url.Query;
             string[] parts = url.Split('/');
-            if (parts.Length == 4 && parts[1] == "tiles")
+            if (parts.Length > 1 && parts[1].Equals("wms", StringComparison.OrdinalIgnoreCase))
             {
-                int zoom = int.Parse(parts[2]);
-                int x = int.Parse(parts[3]);
-                int y = int.Parse(parts[4]);
+                ProcessWmsRequest(context, query);
+            }
+            else if (parts.Length > 1 && parts[1].Equals("wmts", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessWmtsRequest(context, query, parts);
+            }
+            else
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                context.Response.Close();
+            }
+        }
+        private void ProcessWmsRequest(HttpListenerContext context, string query)
+        {
+            var queryParams = System.Web.HttpUtility.ParseQueryString(query);
+            string requestType = queryParams["REQUEST"];
+
+            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase))
+            {
+                string capabilitiesXml = GetWmsCapabilities();
+                context.Response.ContentType = "text/xml";
+                using (StreamWriter writer = new StreamWriter(context.Response.OutputStream))
+                {
+                    writer.Write(capabilitiesXml);
+                }
+            }
+            else if (requestType.Equals("GetMap", StringComparison.OrdinalIgnoreCase))
+            {
+                ProcessGetMapRequest(context, queryParams);
+            }
+            else
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            }
+            context.Response.Close();
+        }
+        private void ProcessGetMapRequest(HttpListenerContext context, System.Collections.Specialized.NameValueCollection queryParams)
+        {
+            string layers = queryParams["LAYERS"];
+            string styles = queryParams["STYLES"];
+            string crs = queryParams["CRS"];
+            string bbox = queryParams["BBOX"];
+            int width = int.Parse(queryParams["WIDTH"]);
+            int height = int.Parse(queryParams["HEIGHT"]);
+            string format = queryParams["FORMAT"];
+
+            // 解析 BBOX 参数
+            string[] bboxParts = bbox.Split(',');
+            double minX = double.Parse(bboxParts[0]);
+            double minY = double.Parse(bboxParts[1]);
+            double maxX = double.Parse(bboxParts[2]);
+            double maxY = double.Parse(bboxParts[3]);
+
+            // 创建地图对象
+            var map = new SharpMap.Map(new Size(width, height))
+            {
+                SRID = GetSridFromCrs(crs),
+                BackColor = Color.White
+            };
+
+            // 添加图层
+            foreach (var layerName in layers.Split(','))
+            {
+                var layer = mapBox.Map.Layers.FirstOrDefault(l => l.LayerName == layerName);
+                if (layer != null)
+                {
+                    map.Layers.Add(layer);
+                }
+            }
+
+            // 设置地图范围
+            map.ZoomToBox(new GeoAPI.Geometries.Envelope(minX, maxX, minY, maxY));
+
+            // 渲染地图
+            using (var bitmap = new Bitmap(width, height))
+            {
+                using (var graphics = Graphics.FromImage(bitmap))
+                {
+                    map.RenderMap(graphics);
+                }
+
+                // 将地图图像写入响应
+                context.Response.ContentType = format;
+                using (var ms = new MemoryStream())
+                {
+                    bitmap.Save(ms, GetImageFormat(format));
+                    ms.WriteTo(context.Response.OutputStream);
+                }
+            }
+        }
+
+        private int GetSridFromCrs(string crs)
+        {
+            // 解析 CRS 参数并返回相应的 SRID
+            if (crs.StartsWith("EPSG:", StringComparison.OrdinalIgnoreCase))
+            {
+                return int.Parse(crs.Substring(5));
+            }
+            throw new ArgumentException("Unsupported CRS: " + crs);
+        }
+
+        private System.Drawing.Imaging.ImageFormat GetImageFormat(string format)
+        {
+            switch (format.ToLower())
+            {
+                case "image/png":
+                    return System.Drawing.Imaging.ImageFormat.Png;
+                case "image/jpeg":
+                    return System.Drawing.Imaging.ImageFormat.Jpeg;
+                default:
+                    throw new ArgumentException("Unsupported format: " + format);
+            }
+        }
+
+        private void ProcessWmtsRequest(HttpListenerContext context, string query, string[] parts)
+        {
+            var queryParams = HttpUtility.ParseQueryString(query);
+            string requestType = queryParams["REQUEST"];
+
+            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase))
+            {
+                string capabilitiesXml = GetWmtsCapabilities();
+                context.Response.ContentType = "text/xml";
+                using (StreamWriter writer = new StreamWriter(context.Response.OutputStream))
+                {
+                    writer.Write(capabilitiesXml);
+                }
+            }
+            else if (requestType.Equals("GetTile", StringComparison.OrdinalIgnoreCase))
+            {
+                int zoom = int.Parse(queryParams["TILEMATRIX"]);
+                int x = int.Parse(queryParams["TILECOL"]);
+                int y = int.Parse(queryParams["TILEROW"]);
 
                 string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles", $"{zoom}/{x}/{y}.png");
                 if (File.Exists(tilePath))
@@ -336,6 +468,83 @@ namespace WindowsFormsApp4
             context.Response.Close();
         }
 
+        private string GetWmsCapabilities()
+        {
+            // 返回 WMS GetCapabilities 响应的 XML 字符串
+            // 你可以根据需要生成此部分
+            return @"<WMS_Capabilities version='1.3.0'>
+                <!-- 你的 WMS GetCapabilities 响应内容 -->
+            </WMS_Capabilities>";
+        }
+
+        private string GetWmtsCapabilities()
+        {
+            // 返回 WMTS GetCapabilities 响应的 XML 字符串
+            // 你可以根据需要生成此部分
+            return @"<Capabilities xmlns=""http://www.opengis.net/wmts/1.0"" xmlns:ows=""http://www.opengis.net/ows/1.1"" xmlns:xlink=""http://www.w3.org/1999/xlink"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" version=""1.0.0"" xsi:schemaLocation=""http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd"">
+                          <ows:ServiceIdentification>
+                            <ows:Title>Sample WMTS Service</ows:Title>
+                            <ows:Abstract>Sample WMTS Service for demonstration purposes</ows:Abstract>
+                            <ows:ServiceType>OGC WMTS</ows:ServiceType>
+                            <ows:ServiceTypeVersion>1.0.0</ows:ServiceTypeVersion>
+                          </ows:ServiceIdentification>
+                          <ows:ServiceProvider>
+                            <ows:ProviderName>Sample Provider</ows:ProviderName>
+                            <ows:ProviderSite xlink:href=""http://localhost:8080/wmts""/>
+                          </ows:ServiceProvider>
+                          <Contents>
+                            <Layer>
+                              <ows:Title>Sample WMTS Layer</ows:Title>
+                              <ows:Abstract>Sample WMTS Layer for demonstration purposes</ows:Abstract>
+                              <ows:Identifier>layer_name</ows:Identifier>
+                              <ows:WGS84BoundingBox>
+                                <ows:LowerCorner>-180 -90</ows:LowerCorner>
+                                <ows:UpperCorner>180 90</ows:UpperCorner>
+                              </ows:WGS84BoundingBox>
+                              <Style isDefault=""true"">
+                                <ows:Identifier>default</ows:Identifier>
+                              </Style>
+                              <Format>image/png</Format>
+                              <TileMatrixSetLink>
+                                <TileMatrixSet>EPSG:4326</TileMatrixSet>
+                              </TileMatrixSetLink>
+                            </Layer>
+                            <TileMatrixSet>
+                              <ows:Identifier>EPSG:4326</ows:Identifier>
+                              <ows:SupportedCRS>urn:ogc:def:crs:EPSG::4326</ows:SupportedCRS>
+                              <TileMatrix>
+                                <ows:Identifier>0</ows:Identifier>
+                                <ScaleDenominator>559082264.0287178</ScaleDenominator>
+                                <TopLeftCorner>-180 90</TopLeftCorner>
+                                <TileWidth>256</TileWidth>
+                                <TileHeight>256</TileHeight>
+                                <MatrixWidth>1</MatrixWidth>
+                                <MatrixHeight>1</MatrixHeight>
+                              </TileMatrix>
+                              <TileMatrix>
+                                <ows:Identifier>1</ows:Identifier>
+                                <ScaleDenominator>279541132.0143589</ScaleDenominator>
+                                <TopLeftCorner>-180 90</TopLeftCorner>
+                                <TileWidth>256</TileWidth>
+                                <TileHeight>256</TileHeight>
+                                <MatrixWidth>2</MatrixWidth>
+                                <MatrixHeight>1</MatrixHeight>
+                              </TileMatrix>
+                              <TileMatrix>
+                                <ows:Identifier>2</ows:Identifier>
+                                <ScaleDenominator>139770566.0071794</ScaleDenominator>
+                                <TopLeftCorner>-180 90</TopLeftCorner>
+                                <TileWidth>256</TileWidth>
+                                <TileHeight>256</TileHeight>
+                                <MatrixWidth>4</MatrixWidth>
+                                <MatrixHeight>2</MatrixHeight>
+                              </TileMatrix>
+                              <!-- 其他缩放级别 -->
+                            </TileMatrixSet>
+                          </Contents>
+                          <ServiceMetadataURL xlink:href=""http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetCapabilities""/>
+                        </Capabilities>";
+        }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             httpListener.Stop();
