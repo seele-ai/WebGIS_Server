@@ -471,79 +471,13 @@ namespace WindowsFormsApp4
         private string GetWmsCapabilities()
         {
             // 返回 WMS GetCapabilities 响应的 XML 字符串
-            // 你可以根据需要生成此部分
-            return @"<WMS_Capabilities version='1.3.0'>
-                <!-- 你的 WMS GetCapabilities 响应内容 -->
-            </WMS_Capabilities>";
+            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<WMS_Capabilities version=\"1.3.0\" xmlns=\"http://www.opengis.net/wms\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\r\n  <Service>\r\n    <Name>OGC:WMS</Name>\r\n    <Title>Sample WMS Service</Title>\r\n    <Abstract>A simple WMS service providing map data.</Abstract>\r\n    <KeywordList>\r\n      <Keyword>WMS</Keyword>\r\n      <Keyword>Web Mapping</Keyword>\r\n    </KeywordList>\r\n    <OnlineResource xlink:type=\"simple\" xlink:href=\"http://localhost:8080/\" />\r\n    <ContactInformation>\r\n      <ContactPersonPrimary>\r\n        <ContactPerson>John Doe</ContactPerson>\r\n        <ContactOrganization>Sample Organization</ContactOrganization>\r\n      </ContactPersonPrimary>\r\n      <ContactPosition>GIS Specialist</ContactPosition>\r\n      <ContactVoiceTelephone>(123) 456-7890</ContactVoiceTelephone>\r\n      <ContactElectronicMailAddress>contact@sample.com</ContactElectronicMailAddress>\r\n    </ContactInformation>\r\n    <Fees>None</Fees>\r\n    <AccessConstraints>None</AccessConstraints>\r\n  </Service>\r\n  <Capability>\r\n    <Request>\r\n      <GetCapabilities>\r\n        <Format>text/xml</Format>\r\n      </GetCapabilities>\r\n      <GetMap>\r\n        <Format>image/png</Format>\r\n        <Format>image/jpeg</Format>\r\n        <DCPType>\r\n          <HTTP>\r\n            <Get xlink:href=\"http://localhost:8080/wms\" />\r\n          </HTTP>\r\n        </DCPType>\r\n      </GetMap>\r\n      <GetFeatureInfo>\r\n        <Format>text/xml</Format>\r\n        <DCPType>\r\n          <HTTP>\r\n            <Get xlink:href=\"http://localhost:8080/wms\" />\r\n          </HTTP>\r\n        </DCPType>\r\n      </GetFeatureInfo>\r\n    </Request>\r\n    <Layer>\r\n      <Name>SampleLayer</Name>\r\n      <Title>Sample Layer</Title>\r\n      <CRS>EPSG:4326</CRS>\r\n      <BoundingBox minx=\"-180\" miny=\"-90\" maxx=\"180\" maxy=\"90\" SRS=\"EPSG:4326\" />\r\n      <Layer>\r\n        <Name>SubLayer</Name>\r\n        <Title>Sub Layer</Title>\r\n      </Layer>\r\n    </Layer>\r\n  </Capability>\r\n</WMS_Capabilities>\r\n";
         }
 
         private string GetWmtsCapabilities()
         {
             // 返回 WMTS GetCapabilities 响应的 XML 字符串
-            // 你可以根据需要生成此部分
-            return @"<Capabilities xmlns=""http://www.opengis.net/wmts/1.0"" xmlns:ows=""http://www.opengis.net/ows/1.1"" xmlns:xlink=""http://www.w3.org/1999/xlink"" xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" version=""1.0.0"" xsi:schemaLocation=""http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd"">
-                          <ows:ServiceIdentification>
-                            <ows:Title>Sample WMTS Service</ows:Title>
-                            <ows:Abstract>Sample WMTS Service for demonstration purposes</ows:Abstract>
-                            <ows:ServiceType>OGC WMTS</ows:ServiceType>
-                            <ows:ServiceTypeVersion>1.0.0</ows:ServiceTypeVersion>
-                          </ows:ServiceIdentification>
-                          <ows:ServiceProvider>
-                            <ows:ProviderName>Sample Provider</ows:ProviderName>
-                            <ows:ProviderSite xlink:href=""http://localhost:8080/wmts""/>
-                          </ows:ServiceProvider>
-                          <Contents>
-                            <Layer>
-                              <ows:Title>Sample WMTS Layer</ows:Title>
-                              <ows:Abstract>Sample WMTS Layer for demonstration purposes</ows:Abstract>
-                              <ows:Identifier>layer_name</ows:Identifier>
-                              <ows:WGS84BoundingBox>
-                                <ows:LowerCorner>-180 -90</ows:LowerCorner>
-                                <ows:UpperCorner>180 90</ows:UpperCorner>
-                              </ows:WGS84BoundingBox>
-                              <Style isDefault=""true"">
-                                <ows:Identifier>default</ows:Identifier>
-                              </Style>
-                              <Format>image/png</Format>
-                              <TileMatrixSetLink>
-                                <TileMatrixSet>EPSG:4326</TileMatrixSet>
-                              </TileMatrixSetLink>
-                            </Layer>
-                            <TileMatrixSet>
-                              <ows:Identifier>EPSG:4326</ows:Identifier>
-                              <ows:SupportedCRS>urn:ogc:def:crs:EPSG::4326</ows:SupportedCRS>
-                              <TileMatrix>
-                                <ows:Identifier>0</ows:Identifier>
-                                <ScaleDenominator>559082264.0287178</ScaleDenominator>
-                                <TopLeftCorner>-180 90</TopLeftCorner>
-                                <TileWidth>256</TileWidth>
-                                <TileHeight>256</TileHeight>
-                                <MatrixWidth>1</MatrixWidth>
-                                <MatrixHeight>1</MatrixHeight>
-                              </TileMatrix>
-                              <TileMatrix>
-                                <ows:Identifier>1</ows:Identifier>
-                                <ScaleDenominator>279541132.0143589</ScaleDenominator>
-                                <TopLeftCorner>-180 90</TopLeftCorner>
-                                <TileWidth>256</TileWidth>
-                                <TileHeight>256</TileHeight>
-                                <MatrixWidth>2</MatrixWidth>
-                                <MatrixHeight>1</MatrixHeight>
-                              </TileMatrix>
-                              <TileMatrix>
-                                <ows:Identifier>2</ows:Identifier>
-                                <ScaleDenominator>139770566.0071794</ScaleDenominator>
-                                <TopLeftCorner>-180 90</TopLeftCorner>
-                                <TileWidth>256</TileWidth>
-                                <TileHeight>256</TileHeight>
-                                <MatrixWidth>4</MatrixWidth>
-                                <MatrixHeight>2</MatrixHeight>
-                              </TileMatrix>
-                              <!-- 其他缩放级别 -->
-                            </TileMatrixSet>
-                          </Contents>
-                          <ServiceMetadataURL xlink:href=""http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetCapabilities""/>
-                        </Capabilities>";
+            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<Capabilities version=\"1.0.0\" xmlns=\"http://www.opengis.net/wmts\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\r\n  <Service>\r\n    <Title>Sample WMTS Service</Title>\r\n    <Abstract>A simple WMTS service providing map tiles.</Abstract>\r\n    <KeywordList>\r\n      <Keyword>WMTS</Keyword>\r\n      <Keyword>Web Mapping</Keyword>\r\n    </KeywordList>\r\n    <OnlineResource xlink:type=\"simple\" xlink:href=\"http://localhost:8080/\" />\r\n    <ContactInformation>\r\n      <ContactPersonPrimary>\r\n        <ContactPerson>John Doe</ContactPerson>\r\n        <ContactOrganization>Sample Organization</ContactOrganization>\r\n      </ContactPersonPrimary>\r\n      <ContactPosition>GIS Specialist</ContactPosition>\r\n      <ContactVoiceTelephone>(123) 456-7890</ContactVoiceTelephone>\r\n      <ContactElectronicMailAddress>contact@sample.com</ContactElectronicMailAddress>\r\n    </ContactInformation>\r\n    <Fees>None</Fees>\r\n    <AccessConstraints>None</AccessConstraints>\r\n  </Service>\r\n  <Contents>\r\n    <Layer>\r\n      <Title>Sample Layer</Title>\r\n      <Abstract>Sample WMTS layer for demonstration.</Abstract>\r\n      <CRS>EPSG:4326</CRS>\r\n      <TileMatrixSetLink>\r\n        <TileMatrixSet>EPSG:4326</TileMatrixSet>\r\n      </TileMatrixSetLink>\r\n      <BoundingBox CRS=\"EPSG:4326\" minx=\"-180\" miny=\"-90\" maxx=\"180\" maxy=\"90\" />\r\n      <TileMatrix>\r\n        <Identifier>0</Identifier>\r\n        <ScaleDenominator>5000000</ScaleDenominator>\r\n        <TopLeftCorner>-180 90</TopLeftCorner>\r\n        <TileWidth>256</TileWidth>\r\n        <TileHeight>256</TileHeight>\r\n        <MatrixWidth>1</MatrixWidth>\r\n        <MatrixHeight>1</MatrixHeight>\r\n      </TileMatrix>\r\n    </Layer>\r\n  </Contents>\r\n</Capabilities>\r\n";
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
