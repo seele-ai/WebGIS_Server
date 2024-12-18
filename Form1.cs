@@ -481,152 +481,14 @@ namespace WindowsFormsApp4
             string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wms.xml";
             return File.ReadAllText(filePath);
         }
-        public void GenerateCapabilitieswmsXml(string outputFilePath)
-        {
-            // 创建 XML 文档
-            XmlDocument xmlDoc = new XmlDocument();
-
-            // 创建 WMS 服务的根节点
-            XmlElement rootElement = xmlDoc.CreateElement("WMS_Capabilities");
-            rootElement.SetAttribute("version", "1.3.0");  // WMS 版本，可以根据需要修改
-            xmlDoc.AppendChild(rootElement);
-
-            // 创建 Service 元素（包含服务的基本信息）
-            XmlElement serviceElement = xmlDoc.CreateElement("Service");
-            rootElement.AppendChild(serviceElement);
-
-            XmlElement nameElement = xmlDoc.CreateElement("Name");
-            nameElement.InnerText = "OGC:WMS";
-            serviceElement.AppendChild(nameElement);
-
-            XmlElement titleElement = xmlDoc.CreateElement("Title");
-            titleElement.InnerText = "Sample WMS Service";
-            serviceElement.AppendChild(titleElement);
-
-            // 创建 Capabilities 元素（包含具体图层信息）
-            XmlElement capabilityElement = xmlDoc.CreateElement("Capability");
-            rootElement.AppendChild(capabilityElement);
-
-            // 创建 Layers 元素，包含图层信息
-            XmlElement layersElement = xmlDoc.CreateElement("Layer");
-            capabilityElement.AppendChild(layersElement);
-
-            
-            // 为每个图层添加 Layer 元素
-            foreach (var layer in mapBox.Map.Layers)
-            {
-                if (layer is VectorLayer vectorLayer)
-                {
-                    XmlElement layerElement = xmlDoc.CreateElement("Layer");
-                    layersElement.AppendChild(layerElement);
-
-                    // 图层名称
-                    XmlElement layerNameElement = xmlDoc.CreateElement("Name");
-                    layerNameElement.InnerText = vectorLayer.LayerName;
-                    layerElement.AppendChild(layerNameElement);
-
-                    // 图层标题
-                    XmlElement layerTitleElement = xmlDoc.CreateElement("Title");
-                    layerTitleElement.InnerText = vectorLayer.LayerName;  // 假设标题与名称相同
-                    layerElement.AppendChild(layerTitleElement);
-
-                    // 图层样式（如果有样式的话）
-                    if (vectorLayer.Style != null)
-                    {
-                        XmlElement styleElement = xmlDoc.CreateElement("Style");
-                        XmlElement styleNameElement = xmlDoc.CreateElement("Name");
-                        styleNameElement.InnerText = vectorLayer.Style.ToString();  // 假设样式是简单的名称
-                        styleElement.AppendChild(styleNameElement);
-                        layerElement.AppendChild(styleElement);
-                    }
-
-                    // 其他信息（例如坐标参考系统）
-                    XmlElement crsElement = xmlDoc.CreateElement("CRS");
-                    crsElement.InnerText = "EPSG:4326";  // 假设你使用的是 WGS84 坐标系统
-                    layerElement.AppendChild(crsElement);
-                }
-            }
-
-            // 保存 XML 文件
-            xmlDoc.Save(outputFilePath);
-        }
+        
         private string GetWmtsCapabilities()
         {
             // 返回 WMTS GetCapabilities 响应的 XML 字符串
             string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wmts.xml";
-            
             return File.ReadAllText(filePath);
         }
 
-        public void GenerateCapabilitieswmtsXml(string outputFilePath)
-        {
-            // 创建 XML 文档
-            XmlDocument xmlDoc = new XmlDocument();
-
-            // 创建 WMS 服务的根节点
-            XmlElement rootElement = xmlDoc.CreateElement("WMS_Capabilities");
-            rootElement.SetAttribute("version", "1.3.0");  // WMS 版本，可以根据需要修改
-            xmlDoc.AppendChild(rootElement);
-
-            // 创建 Service 元素（包含服务的基本信息）
-            XmlElement serviceElement = xmlDoc.CreateElement("Service");
-            rootElement.AppendChild(serviceElement);
-
-            XmlElement nameElement = xmlDoc.CreateElement("Name");
-            nameElement.InnerText = "OGC:WMS";
-            serviceElement.AppendChild(nameElement);
-
-            XmlElement titleElement = xmlDoc.CreateElement("Title");
-            titleElement.InnerText = "Sample WMS Service";
-            serviceElement.AppendChild(titleElement);
-
-            // 创建 Capabilities 元素（包含具体图层信息）
-            XmlElement capabilityElement = xmlDoc.CreateElement("Capability");
-            rootElement.AppendChild(capabilityElement);
-
-            // 创建 Layers 元素，包含图层信息
-            XmlElement layersElement = xmlDoc.CreateElement("Layer");
-            capabilityElement.AppendChild(layersElement);
-
-
-            // 为每个图层添加 Layer 元素
-            foreach (var layer in mapBox.Map.Layers)
-            {
-                if (layer is VectorLayer vectorLayer)
-                {
-                    XmlElement layerElement = xmlDoc.CreateElement("Layer");
-                    layersElement.AppendChild(layerElement);
-
-                    // 图层名称
-                    XmlElement layerNameElement = xmlDoc.CreateElement("Name");
-                    layerNameElement.InnerText = vectorLayer.LayerName;
-                    layerElement.AppendChild(layerNameElement);
-
-                    // 图层标题
-                    XmlElement layerTitleElement = xmlDoc.CreateElement("Title");
-                    layerTitleElement.InnerText = vectorLayer.LayerName;  // 假设标题与名称相同
-                    layerElement.AppendChild(layerTitleElement);
-
-                    // 图层样式（如果有样式的话）
-                    if (vectorLayer.Style != null)
-                    {
-                        XmlElement styleElement = xmlDoc.CreateElement("Style");
-                        XmlElement styleNameElement = xmlDoc.CreateElement("Name");
-                        styleNameElement.InnerText = vectorLayer.Style.ToString();  // 假设样式是简单的名称
-                        styleElement.AppendChild(styleNameElement);
-                        layerElement.AppendChild(styleElement);
-                    }
-
-                    // 其他信息（例如坐标参考系统）
-                    XmlElement crsElement = xmlDoc.CreateElement("CRS");
-                    crsElement.InnerText = "EPSG:4326";  // 假设你使用的是 WGS84 坐标系统
-                    layerElement.AppendChild(crsElement);
-                }
-            }
-
-            // 保存 XML 文件
-            xmlDoc.Save(outputFilePath);
-        }
         private XmlDocument CreateBaseCapabilitiesXml(string serviceType, string version)
         {
             XmlDocument xmlDoc = new XmlDocument();
@@ -687,6 +549,7 @@ namespace WindowsFormsApp4
             XmlElement httpElement = xmlDoc.CreateElement("HTTP", root.NamespaceURI);
             XmlElement getElement = xmlDoc.CreateElement("Get", root.NamespaceURI);
             XmlElement onlineResource = xmlDoc.CreateElement("OnlineResource", root.NamespaceURI);
+            onlineResource.SetAttribute("xlink:type", "simple");
             onlineResource.SetAttribute("xlink:href", "http://localhost:8080/wms");
             getElement.AppendChild(onlineResource);
             httpElement.AppendChild(getElement);
@@ -695,16 +558,21 @@ namespace WindowsFormsApp4
             requestElement.AppendChild(getCapabilities);
 
             XmlElement getMap = xmlDoc.CreateElement("GetMap", root.NamespaceURI);
-            getMap.SetAttribute("Format", "image/png");
-            getMap.SetAttribute("Format", "image/jpeg"); // 可添加更多格式
+            XmlElement format1 = xmlDoc.CreateElement("Format",root.NamespaceURI);
+            format1.InnerText = "image/png";
+            XmlElement format2 = xmlDoc.CreateElement("Format", root.NamespaceURI);
+            format2.InnerText = "image/jpeg";
             dcpType = xmlDoc.CreateElement("DCPType", root.NamespaceURI);
             httpElement = xmlDoc.CreateElement("HTTP", root.NamespaceURI);
             getElement = xmlDoc.CreateElement("Get", root.NamespaceURI);
             onlineResource = xmlDoc.CreateElement("OnlineResource", root.NamespaceURI);
+            onlineResource.SetAttribute("xlink:type", "simple");
             onlineResource.SetAttribute("xlink:href", "http://localhost:8080/wms");
             getElement.AppendChild(onlineResource);
             httpElement.AppendChild(getElement);
             dcpType.AppendChild(httpElement);
+            getMap.AppendChild(format1);
+            getMap.AppendChild(format2);
             getMap.AppendChild(dcpType);
             requestElement.AppendChild(getMap);
 
@@ -724,13 +592,38 @@ namespace WindowsFormsApp4
             XmlElement layersElement = xmlDoc.CreateElement("Layer", root.NamespaceURI);
             capabilityElement.AppendChild(layersElement);
 
-            // 基础图层
-            XmlElement baseLayer = xmlDoc.CreateElement("Layer", root.NamespaceURI);
-            layersElement.AppendChild(baseLayer);
+            
 
             XmlElement baseTitle = xmlDoc.CreateElement("Title", root.NamespaceURI);
             baseTitle.InnerText = "Base Layer";
-            baseLayer.AppendChild(baseTitle);
+            layersElement.AppendChild(baseTitle);
+            XmlElement crsElement1 = xmlDoc.CreateElement("CRS", root.NamespaceURI);
+            crsElement1.InnerText = "EPSG:4326"; // 根据实际 CRS 调整
+            layersElement.AppendChild(crsElement1);
+
+            // 边界框
+            XmlElement bboxElement1 = xmlDoc.CreateElement("EX_GeographicBoundingBox", "http://www.opengis.net/ows/1.1");
+            XmlElement westBound1 = xmlDoc.CreateElement("westBoundLongitude", "http://www.opengis.net/ows/1.1");
+            westBound1.InnerText = mapBox.Map.Envelope.MinX.ToString();
+            XmlElement eastBound1 = xmlDoc.CreateElement("eastBoundLongitude", "http://www.opengis.net/ows/1.1");
+            eastBound1.InnerText = mapBox.Map.Envelope.MaxX.ToString();
+            XmlElement southBound1 = xmlDoc.CreateElement("southBoundLatitude", "http://www.opengis.net/ows/1.1");
+            southBound1.InnerText = mapBox.Map.Envelope.MinY.ToString();
+            XmlElement northBound1 = xmlDoc.CreateElement("northBoundLatitude", "http://www.opengis.net/ows/1.1");
+            northBound1.InnerText = mapBox.Map.Envelope.MaxY.ToString();
+
+            bboxElement1.AppendChild(westBound1);
+            bboxElement1.AppendChild(eastBound1);
+            bboxElement1.AppendChild(southBound1);
+            bboxElement1.AppendChild(northBound1);
+            layersElement.AppendChild(bboxElement1);
+            XmlElement bjBoundingBoxAttr1 = xmlDoc.CreateElement("BoundingBox", root.NamespaceURI);
+            bjBoundingBoxAttr1.SetAttribute("CRS", "EPSG:4326");
+            bjBoundingBoxAttr1.SetAttribute("miny", "39.4");
+            bjBoundingBoxAttr1.SetAttribute("minx", "115.4");
+            bjBoundingBoxAttr1.SetAttribute("maxy", "41.0");
+            bjBoundingBoxAttr1.SetAttribute("maxx", "117.5");
+            layersElement.AppendChild(bjBoundingBoxAttr1);
 
             // 遍历地图图层
             foreach (var layer in mapBox.Map.Layers.OfType<VectorLayer>())
@@ -770,6 +663,13 @@ namespace WindowsFormsApp4
                 bboxElement.AppendChild(northBound);
                 layerElement.AppendChild(bboxElement);
 
+                XmlElement bjBoundingBoxAttr = xmlDoc.CreateElement("BoundingBox", root.NamespaceURI);
+                bjBoundingBoxAttr.SetAttribute("CRS", "EPSG:4326");
+                bjBoundingBoxAttr.SetAttribute("miny", "39.4");
+                bjBoundingBoxAttr.SetAttribute("minx", "115.4");
+                bjBoundingBoxAttr.SetAttribute("maxy", "41.0");
+                bjBoundingBoxAttr.SetAttribute("maxx", "117.5");
+                layerElement.AppendChild(bjBoundingBoxAttr);
                 // 样式
                 XmlElement styleElement = xmlDoc.CreateElement("Style", root.NamespaceURI);
                 layerElement.AppendChild(styleElement);
