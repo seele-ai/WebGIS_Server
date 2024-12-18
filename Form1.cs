@@ -20,6 +20,7 @@ using System.IO;
 using System.Net;
 using System.Threading;
 using System.Web;
+using SharpMap;
 
 namespace WindowsFormsApp4
 {
@@ -80,6 +81,8 @@ namespace WindowsFormsApp4
                     string shapeFilePath = openFileDialog.FileName;
                     string sldPath = GetSldFilePath(shapeFilePath);
                     AddLayer(shapeFilePath, sldPath);
+                    string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wms.xml";
+                    GenerateCapabilitieswmsXml(filePath);
                 }
             }
         }
@@ -216,6 +219,8 @@ namespace WindowsFormsApp4
 
             string outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles");
             GenerateWmtsTiles(mapBox.Map, outputDirectory);
+            string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wmts.xml";
+            GenerateCapabilitieswmtsXml(filePath);
         }
         private void GenerateWmtsTiles(SharpMap.Map map, string outputDirectory)
         {
@@ -447,7 +452,7 @@ namespace WindowsFormsApp4
                 int x = int.Parse(queryParams["TILECOL"]);
                 int y = int.Parse(queryParams["TILEROW"]);
 
-                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles", $"{zoom}/{x}/{y}.png");
+                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles", $"{zoom}\\{x}\\{y}.png");
                 if (File.Exists(tilePath))
                 {
                     context.Response.ContentType = "image/png";
@@ -470,15 +475,157 @@ namespace WindowsFormsApp4
 
         private string GetWmsCapabilities()
         {
-            // 返回 WMS GetCapabilities 响应的 XML 字符串
-            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<WMS_Capabilities version=\"1.3.0\" xmlns=\"http://www.opengis.net/wms\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\r\n  <Service>\r\n    <Name>OGC:WMS</Name>\r\n    <Title>Sample WMS Service</Title>\r\n    <Abstract>A simple WMS service providing map data.</Abstract>\r\n    <KeywordList>\r\n      <Keyword>WMS</Keyword>\r\n      <Keyword>Web Mapping</Keyword>\r\n    </KeywordList>\r\n    <OnlineResource xlink:type=\"simple\" xlink:href=\"http://localhost:8080/\" />\r\n    <ContactInformation>\r\n      <ContactPersonPrimary>\r\n        <ContactPerson>John Doe</ContactPerson>\r\n        <ContactOrganization>Sample Organization</ContactOrganization>\r\n      </ContactPersonPrimary>\r\n      <ContactPosition>GIS Specialist</ContactPosition>\r\n      <ContactVoiceTelephone>(123) 456-7890</ContactVoiceTelephone>\r\n      <ContactElectronicMailAddress>contact@sample.com</ContactElectronicMailAddress>\r\n    </ContactInformation>\r\n    <Fees>None</Fees>\r\n    <AccessConstraints>None</AccessConstraints>\r\n  </Service>\r\n  <Capability>\r\n    <Request>\r\n      <GetCapabilities>\r\n        <Format>text/xml</Format>\r\n      </GetCapabilities>\r\n      <GetMap>\r\n        <Format>image/png</Format>\r\n        <Format>image/jpeg</Format>\r\n        <DCPType>\r\n          <HTTP>\r\n            <Get xlink:href=\"http://localhost:8080/wms\" />\r\n          </HTTP>\r\n        </DCPType>\r\n      </GetMap>\r\n      <GetFeatureInfo>\r\n        <Format>text/xml</Format>\r\n        <DCPType>\r\n          <HTTP>\r\n            <Get xlink:href=\"http://localhost:8080/wms\" />\r\n          </HTTP>\r\n        </DCPType>\r\n      </GetFeatureInfo>\r\n    </Request>\r\n    <Layer>\r\n      <Name>SampleLayer</Name>\r\n      <Title>Sample Layer</Title>\r\n      <CRS>EPSG:4326</CRS>\r\n      <BoundingBox minx=\"-180\" miny=\"-90\" maxx=\"180\" maxy=\"90\" SRS=\"EPSG:4326\" />\r\n      <Layer>\r\n        <Name>SubLayer</Name>\r\n        <Title>Sub Layer</Title>\r\n      </Layer>\r\n    </Layer>\r\n  </Capability>\r\n</WMS_Capabilities>\r\n";
-        }
 
+            // 返回 WMS GetCapabilities 响应的 XML 字符串
+            string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wms.xml";
+            return File.ReadAllText(filePath);
+        }
+        public void GenerateCapabilitieswmsXml(string outputFilePath)
+        {
+            // 创建 XML 文档
+            XmlDocument xmlDoc = new XmlDocument();
+
+            // 创建 WMS 服务的根节点
+            XmlElement rootElement = xmlDoc.CreateElement("WMS_Capabilities");
+            rootElement.SetAttribute("version", "1.3.0");  // WMS 版本，可以根据需要修改
+            xmlDoc.AppendChild(rootElement);
+
+            // 创建 Service 元素（包含服务的基本信息）
+            XmlElement serviceElement = xmlDoc.CreateElement("Service");
+            rootElement.AppendChild(serviceElement);
+
+            XmlElement nameElement = xmlDoc.CreateElement("Name");
+            nameElement.InnerText = "OGC:WMS";
+            serviceElement.AppendChild(nameElement);
+
+            XmlElement titleElement = xmlDoc.CreateElement("Title");
+            titleElement.InnerText = "Sample WMS Service";
+            serviceElement.AppendChild(titleElement);
+
+            // 创建 Capabilities 元素（包含具体图层信息）
+            XmlElement capabilityElement = xmlDoc.CreateElement("Capability");
+            rootElement.AppendChild(capabilityElement);
+
+            // 创建 Layers 元素，包含图层信息
+            XmlElement layersElement = xmlDoc.CreateElement("Layer");
+            capabilityElement.AppendChild(layersElement);
+
+            
+            // 为每个图层添加 Layer 元素
+            foreach (var layer in mapBox.Map.Layers)
+            {
+                if (layer is VectorLayer vectorLayer)
+                {
+                    XmlElement layerElement = xmlDoc.CreateElement("Layer");
+                    layersElement.AppendChild(layerElement);
+
+                    // 图层名称
+                    XmlElement layerNameElement = xmlDoc.CreateElement("Name");
+                    layerNameElement.InnerText = vectorLayer.LayerName;
+                    layerElement.AppendChild(layerNameElement);
+
+                    // 图层标题
+                    XmlElement layerTitleElement = xmlDoc.CreateElement("Title");
+                    layerTitleElement.InnerText = vectorLayer.LayerName;  // 假设标题与名称相同
+                    layerElement.AppendChild(layerTitleElement);
+
+                    // 图层样式（如果有样式的话）
+                    if (vectorLayer.Style != null)
+                    {
+                        XmlElement styleElement = xmlDoc.CreateElement("Style");
+                        XmlElement styleNameElement = xmlDoc.CreateElement("Name");
+                        styleNameElement.InnerText = vectorLayer.Style.ToString();  // 假设样式是简单的名称
+                        styleElement.AppendChild(styleNameElement);
+                        layerElement.AppendChild(styleElement);
+                    }
+
+                    // 其他信息（例如坐标参考系统）
+                    XmlElement crsElement = xmlDoc.CreateElement("CRS");
+                    crsElement.InnerText = "EPSG:4326";  // 假设你使用的是 WGS84 坐标系统
+                    layerElement.AppendChild(crsElement);
+                }
+            }
+
+            // 保存 XML 文件
+            xmlDoc.Save(outputFilePath);
+        }
         private string GetWmtsCapabilities()
         {
             // 返回 WMTS GetCapabilities 响应的 XML 字符串
-            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<Capabilities version=\"1.0.0\" xmlns=\"http://www.opengis.net/wmts\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\r\n  <Service>\r\n    <Title>Sample WMTS Service</Title>\r\n    <Abstract>A simple WMTS service providing map tiles.</Abstract>\r\n    <KeywordList>\r\n      <Keyword>WMTS</Keyword>\r\n      <Keyword>Web Mapping</Keyword>\r\n    </KeywordList>\r\n    <OnlineResource xlink:type=\"simple\" xlink:href=\"http://localhost:8080/\" />\r\n    <ContactInformation>\r\n      <ContactPersonPrimary>\r\n        <ContactPerson>John Doe</ContactPerson>\r\n        <ContactOrganization>Sample Organization</ContactOrganization>\r\n      </ContactPersonPrimary>\r\n      <ContactPosition>GIS Specialist</ContactPosition>\r\n      <ContactVoiceTelephone>(123) 456-7890</ContactVoiceTelephone>\r\n      <ContactElectronicMailAddress>contact@sample.com</ContactElectronicMailAddress>\r\n    </ContactInformation>\r\n    <Fees>None</Fees>\r\n    <AccessConstraints>None</AccessConstraints>\r\n  </Service>\r\n  <Contents>\r\n    <Layer>\r\n      <Title>Sample Layer</Title>\r\n      <Abstract>Sample WMTS layer for demonstration.</Abstract>\r\n      <CRS>EPSG:4326</CRS>\r\n      <TileMatrixSetLink>\r\n        <TileMatrixSet>EPSG:4326</TileMatrixSet>\r\n      </TileMatrixSetLink>\r\n      <BoundingBox CRS=\"EPSG:4326\" minx=\"-180\" miny=\"-90\" maxx=\"180\" maxy=\"90\" />\r\n      <TileMatrix>\r\n        <Identifier>0</Identifier>\r\n        <ScaleDenominator>5000000</ScaleDenominator>\r\n        <TopLeftCorner>-180 90</TopLeftCorner>\r\n        <TileWidth>256</TileWidth>\r\n        <TileHeight>256</TileHeight>\r\n        <MatrixWidth>1</MatrixWidth>\r\n        <MatrixHeight>1</MatrixHeight>\r\n      </TileMatrix>\r\n    </Layer>\r\n  </Contents>\r\n</Capabilities>\r\n";
+            string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wmts.xml";
+            
+            return File.ReadAllText(filePath);
         }
+
+        public void GenerateCapabilitieswmtsXml(string outputFilePath)
+        {
+            // 创建 XML 文档
+            XmlDocument xmlDoc = new XmlDocument();
+
+            // 创建 WMS 服务的根节点
+            XmlElement rootElement = xmlDoc.CreateElement("WMS_Capabilities");
+            rootElement.SetAttribute("version", "1.3.0");  // WMS 版本，可以根据需要修改
+            xmlDoc.AppendChild(rootElement);
+
+            // 创建 Service 元素（包含服务的基本信息）
+            XmlElement serviceElement = xmlDoc.CreateElement("Service");
+            rootElement.AppendChild(serviceElement);
+
+            XmlElement nameElement = xmlDoc.CreateElement("Name");
+            nameElement.InnerText = "OGC:WMS";
+            serviceElement.AppendChild(nameElement);
+
+            XmlElement titleElement = xmlDoc.CreateElement("Title");
+            titleElement.InnerText = "Sample WMS Service";
+            serviceElement.AppendChild(titleElement);
+
+            // 创建 Capabilities 元素（包含具体图层信息）
+            XmlElement capabilityElement = xmlDoc.CreateElement("Capability");
+            rootElement.AppendChild(capabilityElement);
+
+            // 创建 Layers 元素，包含图层信息
+            XmlElement layersElement = xmlDoc.CreateElement("Layer");
+            capabilityElement.AppendChild(layersElement);
+
+
+            // 为每个图层添加 Layer 元素
+            foreach (var layer in mapBox.Map.Layers)
+            {
+                if (layer is VectorLayer vectorLayer)
+                {
+                    XmlElement layerElement = xmlDoc.CreateElement("Layer");
+                    layersElement.AppendChild(layerElement);
+
+                    // 图层名称
+                    XmlElement layerNameElement = xmlDoc.CreateElement("Name");
+                    layerNameElement.InnerText = vectorLayer.LayerName;
+                    layerElement.AppendChild(layerNameElement);
+
+                    // 图层标题
+                    XmlElement layerTitleElement = xmlDoc.CreateElement("Title");
+                    layerTitleElement.InnerText = vectorLayer.LayerName;  // 假设标题与名称相同
+                    layerElement.AppendChild(layerTitleElement);
+
+                    // 图层样式（如果有样式的话）
+                    if (vectorLayer.Style != null)
+                    {
+                        XmlElement styleElement = xmlDoc.CreateElement("Style");
+                        XmlElement styleNameElement = xmlDoc.CreateElement("Name");
+                        styleNameElement.InnerText = vectorLayer.Style.ToString();  // 假设样式是简单的名称
+                        styleElement.AppendChild(styleNameElement);
+                        layerElement.AppendChild(styleElement);
+                    }
+
+                    // 其他信息（例如坐标参考系统）
+                    XmlElement crsElement = xmlDoc.CreateElement("CRS");
+                    crsElement.InnerText = "EPSG:4326";  // 假设你使用的是 WGS84 坐标系统
+                    layerElement.AppendChild(crsElement);
+                }
+            }
+            // 保存 XML 文件
+            xmlDoc.Save(outputFilePath);
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             httpListener.Stop();
