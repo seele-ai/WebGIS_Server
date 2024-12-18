@@ -560,6 +560,8 @@
     <Content Include="Forms\Icons\32x32\vector-grass.png" />
     <Content Include="Forms\Icons\32x32\vector.png" />
     <Content Include="Forms\Icons\ReadMe.txt" />
+    <Content Include="xml\wms.xml" />
+    <Content Include="xml\wmts.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
