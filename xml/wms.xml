@@ -1,17 +1,159 @@
-<WMS_Capabilities version="1.3.0">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WMS_Capabilities xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.3.0" updateSequence="580" xsi:schemaLocation="http://www.opengis.net/wms http://localhost:8080/schemas/wms/1.3.0/capabilities_1_3_0.xsd" xmlns="http://www.opengis.net/wms">
   <Service>
-    <Name>OGC:WMS</Name>
-    <Title>Sample WMS Service</Title>
+    <Name>WMS</Name>
+    <Title>GeoServer Web Map Service</Title>
+    <Abstract>A compliant implementation of WMS plus most of the SLD extension (dynamic styling). Can also generate PDF, SVG, KML, GeoRSS</Abstract>
+    <KeywordList>
+      <Keyword>WMS</Keyword>
+      <Keyword>GEOSERVER</Keyword>
+    </KeywordList>
+    <OnlineResource xlink:type="simple" xlink:href="http://geoserver.org" />
+    <ContactInformation>
+      <ContactPersonPrimary>
+        <ContactPerson>Claudius Ptolomaeus</ContactPerson>
+        <ContactOrganization>OSGeo</ContactOrganization>
+      </ContactPersonPrimary>
+      <ContactPosition>Chief Geographer</ContactPosition>
+      <ContactAddress>
+        <AddressType>Work</AddressType>
+        <Address></Address>
+        <City>Alexandria</City>
+        <StateOrProvince>Egypt</StateOrProvince>
+        <PostCode></PostCode>
+        <Country>Roman Empire</Country>
+      </ContactAddress>
+      <ContactVoiceTelephone />
+      <ContactFacsimileTelephone />
+      <ContactElectronicMailAddress>claudius.ptolomaeus@mercury.olympus.gov</ContactElectronicMailAddress>
+    </ContactInformation>
+    <Fees>NONE</Fees>
+    <AccessConstraints>NONE</AccessConstraints>
   </Service>
   <Capability>
+    <Request>
+      <GetCapabilities>
+        <Format>text/xml</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xlink:type="simple" xlink:href="http://localhost:8080/wms?SERVICE=WMS" />
+            </Get>
+            <Post>
+              <OnlineResource xlink:type="simple" xlink:href="http://localhost:8080/wms?SERVICE=WMS" />
+            </Post>
+          </HTTP>
+        </DCPType>
+      </GetCapabilities>
+      <GetMap>
+        <Format>image/png</Format>
+        <Format>application/atom+xml</Format>
+        <Format>application/json;type=utfgrid</Format>
+        <Format>application/pdf</Format>
+        <Format>application/rss+xml</Format>
+        <Format>application/vnd.google-earth.kml+xml</Format>
+        <Format>application/vnd.google-earth.kml+xml;mode=networklink</Format>
+        <Format>application/vnd.google-earth.kmz</Format>
+        <Format>image/geotiff</Format>
+        <Format>image/geotiff8</Format>
+        <Format>image/gif</Format>
+        <Format>image/jpeg</Format>
+        <Format>image/png; mode=8bit</Format>
+        <Format>image/svg+xml</Format>
+        <Format>image/tiff</Format>
+        <Format>image/tiff8</Format>
+        <Format>image/vnd.jpeg-png</Format>
+        <Format>image/vnd.jpeg-png8</Format>
+        <Format>text/html; subtype=openlayers</Format>
+        <Format>text/html; subtype=openlayers2</Format>
+        <Format>text/html; subtype=openlayers3</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xlink:type="simple" xlink:href="http://localhost:8080/wms?SERVICE=WMS" />
+            </Get>
+          </HTTP>
+        </DCPType>
+      </GetMap>
+      <GetFeatureInfo>
+        <Format>text/plain</Format>
+        <Format>application/vnd.ogc.gml</Format>
+        <Format>text/xml</Format>
+        <Format>application/vnd.ogc.gml/3.1.1</Format>
+        <Format>text/xml; subtype=gml/3.1.1</Format>
+        <Format>text/html</Format>
+        <Format>application/json</Format>
+        <DCPType>
+          <HTTP>
+            <Get>
+              <OnlineResource xlink:type="simple" xlink:href="http://localhost:8080/wms?SERVICE=WMS" />
+            </Get>
+          </HTTP>
+        </DCPType>
+      </GetFeatureInfo>
+    </Request>
+    <Exception>
+      <Format>XML</Format>
+      <Format>INIMAGE</Format>
+      <Format>BLANK</Format>
+      <Format>JSON</Format>
+    </Exception>
     <Layer>
-      <Layer>
-        <Name>BJ_country</Name>
-        <Title>BJ_country</Title>
-        <Style>
-          <Name>SharpMap.Styles.VectorStyle</Name>
-        </Style>
+      <Title>GeoServer Web Map Service</Title>
+      <Abstract>A compliant implementation of WMS plus most of the SLD extension (dynamic styling). Can also generate PDF, SVG, KML, GeoRSS</Abstract>
+      <CRS>EPSG:2000</CRS>
+      <CRS>EPSG:2001</CRS>
+      <CRS>EPSG:2002</CRS>
+      <CRS>EPSG:2003</CRS>
+      <CRS>EPSG:2004</CRS>
+      <CRS>EPSG:2005</CRS>
+      <CRS>EPSG:2006</CRS>
+      <CRS>EPSG:2007</CRS>
+      <CRS>EPSG:2008</CRS>
+      <CRS>EPSG:2009</CRS>
+      <CRS>EPSG:2010</CRS>
+      <CRS>EPSG:2011</CRS>
+      <CRS>EPSG:2012</CRS>
+      <CRS>EPSG:2013</CRS>
+      <CRS>EPSG:2014</CRS>
+      <CRS>EPSG:2015</CRS>
+      <CRS>EPSG:2016</CRS>
+      <CRS>EPSG:4326</CRS>
+      <CRS>CRS:84</CRS>
+      <EX_GeographicBoundingBox xmlns="http://www.opengis.net/ows/1.1">
+        <westBoundLongitude>-180.0</westBoundLongitude>
+        <eastBoundLongitude>180.0</eastBoundLongitude>
+        <southBoundLatitude>-90.0</southBoundLatitude>
+        <northBoundLatitude>90.0</northBoundLatitude>
+      </EX_GeographicBoundingBox>
+      <BoundingBox CRS="CRS:84" minx="-180.0" miny="-90.0" maxx="180.0" maxy="90.0" />
+      <Layer queryable="1" opaque="0">
+        <Name>北京市界</Name>
+        <Title>北京市界</Title>
+        <Abstract />
+        <KeywordList>
+          <Keyword>features</Keyword>
+          <Keyword>北京市界</Keyword>
+        </KeywordList>
         <CRS>EPSG:4326</CRS>
+        <CRS>CRS:84</CRS>
+        <EX_GeographicBoundingBox xmlns="http://www.opengis.net/ows/1.1">
+          <westBoundLongitude>115.417284</westBoundLongitude>
+          <eastBoundLongitude>117.500126</eastBoundLongitude>
+          <southBoundLatitude>39.438283</southBoundLatitude>
+          <northBoundLatitude>41.059244</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="CRS:84" minx="115.417284" miny="39.438283" maxx="117.500126" maxy="41.059244" />
+        <BoundingBox CRS="EPSG:4326" minx="39.438283" miny="115.417284" maxx="41.059244" maxy="117.500126" />
+        <Style>
+          <Name>polygon</Name>
+          <Title>Default Polygon</Title>
+          <Abstract>A sample style that draws a polygon</Abstract>
+          <LegendURL width="20" height="20">
+            <Format>image/png</Format>
+            <OnlineResource xlink:type="simple" xlink:href="http://localhost:8080/wms?service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;width=20&amp;height=20&amp;layer=%E5%8C%97%E4%BA%AC%E5%B8%82%E7%95%8C" />
+          </LegendURL>
+        </Style>
       </Layer>
     </Layer>
   </Capability>

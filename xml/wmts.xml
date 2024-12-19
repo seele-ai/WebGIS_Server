@@ -1,18 +1,91 @@
-<WMS_Capabilities version="1.3.0">
-  <Service>
-    <Name>OGC:WMS</Name>
-    <Title>Sample WMS Service</Title>
-  </Service>
-  <Capability>
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<WMTS_Capabilities version="1.0.0" xmlns="http://www.opengis.net/wmts/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" schemaLocation="http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="http://www.opengis.net/gml" xmlns:wmts="http://www.opengis.net/wmts/1.0">
+  <ows:ServiceIdentification>
+    <ows:Title>Sample WMTS Service</ows:Title>
+    <ows:ServiceType>OGC WMTS</ows:ServiceType>
+    <ows:ServiceTypeVersion>1.0.0</ows:ServiceTypeVersion>
+  </ows:ServiceIdentification>
+  <ows:ServiceProvider>
+    <ows:ProviderName>Sample Provider</ows:ProviderName>
+  </ows:ServiceProvider>
+  <ows:OperationsMetadata />
+  <Contents>
     <Layer>
-      <Layer>
-        <Name>BJ_country</Name>
-        <Title>BJ_country</Title>
-        <Style>
-          <Name>SharpMap.Styles.VectorStyle</Name>
-        </Style>
-        <CRS>EPSG:4326</CRS>
-      </Layer>
+      <ows:Identifier>BJ_country</ows:Identifier>
+      <ows:Title>BJ_country</ows:Title>
+      <ows:WGS84BoundingBox>
+        <ows:LowerCorner>115.109076166667 39.437935</ows:LowerCorner>
+        <ows:UpperCorner>117.809822833333 41.0583830000001</ows:UpperCorner>
+      </ows:WGS84BoundingBox>
+      <ows:SupportedCRS>urn:ogc:def:crs:EPSG::4326</ows:SupportedCRS>
+      <TileMatrixSetLink>
+        <TileMatrixSet>GoogleMapsCompatible</TileMatrixSet>
+      </TileMatrixSetLink>
+      <Format>image/png</Format>
+      <Style>
+        <Default>default</Default>
+        <ows:Identifier>default</ows:Identifier>
+      </Style>
     </Layer>
-  </Capability>
-</WMS_Capabilities>
+    <TileMatrixSet>
+      <TileMatrixSet>
+        <ows:Identifier>GoogleMapsCompatible</ows:Identifier>
+        <ows:SupportedCRS>urn:ogc:def:crs:EPSG::3857</ows:SupportedCRS>
+        <TileMatrix>
+          <ows:Identifier>0</ows:Identifier>
+          <ScaleDenominator>156543.033928</ScaleDenominator>
+          <TopLeftCorner>-20037508.3427892 20037508.3427892</TopLeftCorner>
+          <TileWidth>256</TileWidth>
+          <TileHeight>256</TileHeight>
+          <MatrixWidth>1</MatrixWidth>
+          <MatrixHeight>1</MatrixHeight>
+        </TileMatrix>
+        <TileMatrix>
+          <ows:Identifier>1</ows:Identifier>
+          <ScaleDenominator>78271.516964</ScaleDenominator>
+          <TopLeftCorner>-20037508.3427892 20037508.3427892</TopLeftCorner>
+          <TileWidth>256</TileWidth>
+          <TileHeight>256</TileHeight>
+          <MatrixWidth>2</MatrixWidth>
+          <MatrixHeight>2</MatrixHeight>
+        </TileMatrix>
+        <TileMatrix>
+          <ows:Identifier>2</ows:Identifier>
+          <ScaleDenominator>39135.758482</ScaleDenominator>
+          <TopLeftCorner>-20037508.3427892 20037508.3427892</TopLeftCorner>
+          <TileWidth>256</TileWidth>
+          <TileHeight>256</TileHeight>
+          <MatrixWidth>4</MatrixWidth>
+          <MatrixHeight>4</MatrixHeight>
+        </TileMatrix>
+        <TileMatrix>
+          <ows:Identifier>3</ows:Identifier>
+          <ScaleDenominator>19567.879241</ScaleDenominator>
+          <TopLeftCorner>-20037508.3427892 20037508.3427892</TopLeftCorner>
+          <TileWidth>256</TileWidth>
+          <TileHeight>256</TileHeight>
+          <MatrixWidth>8</MatrixWidth>
+          <MatrixHeight>8</MatrixHeight>
+        </TileMatrix>
+        <TileMatrix>
+          <ows:Identifier>4</ows:Identifier>
+          <ScaleDenominator>9783.939621</ScaleDenominator>
+          <TopLeftCorner>-20037508.3427892 20037508.3427892</TopLeftCorner>
+          <TileWidth>256</TileWidth>
+          <TileHeight>256</TileHeight>
+          <MatrixWidth>16</MatrixWidth>
+          <MatrixHeight>16</MatrixHeight>
+        </TileMatrix>
+        <TileMatrix>
+          <ows:Identifier>5</ows:Identifier>
+          <ScaleDenominator>4891.969810</ScaleDenominator>
+          <TopLeftCorner>-20037508.3427892 20037508.3427892</TopLeftCorner>
+          <TileWidth>256</TileWidth>
+          <TileHeight>256</TileHeight>
+          <MatrixWidth>32</MatrixWidth>
+          <MatrixHeight>32</MatrixHeight>
+        </TileMatrix>
+      </TileMatrixSet>
+    </TileMatrixSet>
+  </Contents>
+</WMTS_Capabilities>
