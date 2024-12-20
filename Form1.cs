@@ -22,6 +22,9 @@ using System.Threading;
 using System.Web;
 using SharpMap;
 using System.Xml.Linq;
+using GeoAPI.Geometries;
+using System.Drawing.Imaging;
+using System.Globalization;
 
 namespace WindowsFormsApp4
 {
@@ -357,59 +360,113 @@ namespace WindowsFormsApp4
         }
         private void ProcessGetMapRequest(HttpListenerContext context, System.Collections.Specialized.NameValueCollection queryParams)
         {
-            string layers = queryParams["LAYERS"];
-            string styles = queryParams["STYLES"];
-            string crs = queryParams["CRS"];
-            string bbox = queryParams["BBOX"];
-            int width = int.Parse(queryParams["WIDTH"]);
-            int height = int.Parse(queryParams["HEIGHT"]);
-            string format = queryParams["FORMAT"];
-
-            // 解析 BBOX 参数
-            string[] bboxParts = bbox.Split(',');
-            double minX = double.Parse(bboxParts[0]);
-            double minY = double.Parse(bboxParts[1]);
-            double maxX = double.Parse(bboxParts[2]);
-            double maxY = double.Parse(bboxParts[3]);
-
-            // 创建地图对象
-            var map = new SharpMap.Map(new Size(width, height))
+            try
             {
-                SRID = GetSridFromCrs(crs),
-                BackColor = Color.White
-            };
+                // 获取并解析请求参数
+                string layersParam = queryParams["LAYERS"];
+                string stylesParam = queryParams["STYLES"];
+                string crs = queryParams["CRS"];
+                string bbox = queryParams["BBOX"];
+                int width = int.Parse(queryParams["WIDTH"], CultureInfo.InvariantCulture);
+                int height = int.Parse(queryParams["HEIGHT"], CultureInfo.InvariantCulture);
+                string format = queryParams["FORMAT"];
 
-            // 添加图层
-            foreach (var layerName in layers.Split(','))
-            {
-                var layer = mapBox.Map.Layers.FirstOrDefault(l => l.LayerName == layerName);
-                if (layer != null)
+                // 解析 BBOX 参数
+                string[] bboxParts = bbox.Split(',');
+                if (bboxParts.Length != 4)
                 {
-                    map.Layers.Add(layer);
+                    throw new ArgumentException("BBOX 参数格式不正确。");
+                }
+
+                double minX = double.Parse(bboxParts[0], CultureInfo.InvariantCulture);
+                double minY = double.Parse(bboxParts[1], CultureInfo.InvariantCulture);
+                double maxX = double.Parse(bboxParts[2], CultureInfo.InvariantCulture);
+                double maxY = double.Parse(bboxParts[3], CultureInfo.InvariantCulture);
+
+                // 创建地图对象，设置背景为透明
+                var map = new SharpMap.Map(new Size(width, height))
+                {
+                    SRID = GetSridFromCrs(crs),
+                    BackColor = Color.Transparent
+                };
+
+                // 添加请求的图层
+                foreach (var layerName in layersParam.Split(','))
+                {
+                    var layer = mapBox.Map.Layers.FirstOrDefault(l => l.LayerName.Equals(layerName, StringComparison.OrdinalIgnoreCase));
+                    if (layer != null)
+                    {
+                        map.Layers.Add(layer); // 使用 Clone() 确保每个请求独立
+                    }
+                    else
+                    {
+                        // 处理找不到的图层（可选）
+                        // 例如，记录日志或返回错误信息
+                    }
+                }
+
+                // 设置地图范围
+                map.ZoomToBox(new Envelope(minX, maxX, minY, maxY));
+
+                // 渲染地图
+                using (var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb))
+                {
+                    using (var graphics = Graphics.FromImage(bitmap))
+                    {
+                        graphics.Clear(Color.Transparent); // 确保背景透明
+                        map.RenderMap(graphics);
+                    }
+
+                    // 设置响应内容类型
+                    ImageFormat imageFormat = GetImageFormat(format);
+                    if (imageFormat == null)
+                    {
+                        throw new ArgumentException($"不支持的图像格式: {format}");
+                    }
+
+                    context.Response.ContentType = GetMimeType(imageFormat);
+
+                    // 将图像保存到内存流
+                    using (var ms = new MemoryStream())
+                    {
+                        bitmap.Save(ms, imageFormat);
+                        ms.WriteTo(context.Response.OutputStream);
+                    }
+                }
+
+                // 设置状态码为 200 OK
+                context.Response.StatusCode = (int)HttpStatusCode.OK;
+            }
+            catch (Exception ex)
+            {
+                // 处理异常，返回错误信息
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                using (var writer = new StreamWriter(context.Response.OutputStream))
+                {
+                    writer.Write($"<ServiceExceptionReport version=\"1.3.0\" xmlns=\"http://www.opengis.net/ogc\"><ServiceException>{WebUtility.HtmlEncode(ex.Message)}</ServiceException></ServiceExceptionReport>");
                 }
             }
-
-            // 设置地图范围
-            map.ZoomToBox(new GeoAPI.Geometries.Envelope(minX, maxX, minY, maxY));
-
-            // 渲染地图
-            using (var bitmap = new Bitmap(width, height))
+            finally
             {
-                using (var graphics = Graphics.FromImage(bitmap))
-                {
-                    map.RenderMap(graphics);
-                }
-
-                // 将地图图像写入响应
-                context.Response.ContentType = format;
-                using (var ms = new MemoryStream())
-                {
-                    bitmap.Save(ms, GetImageFormat(format));
-                    ms.WriteTo(context.Response.OutputStream);
-                }
+                // 关闭响应流
+                context.Response.OutputStream.Close();
             }
+
         }
-
+        private string GetMimeType(ImageFormat format)
+        {
+            if (format.Equals(ImageFormat.Png))
+                return "image/png";
+            if (format.Equals(ImageFormat.Jpeg))
+                return "image/jpeg";
+            if (format.Equals(ImageFormat.Gif))
+                return "image/gif";
+            if (format.Equals(ImageFormat.Bmp))
+                return "image/bmp";
+            if (format.Equals(ImageFormat.Tiff))
+                return "image/tiff";
+            return "application/octet-stream"; // 默认 MIME 类型
+        }
         private int GetSridFromCrs(string crs)
         {
             // 解析 CRS 参数并返回相应的 SRID
@@ -492,33 +549,6 @@ namespace WindowsFormsApp4
             string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wmts.xml";
             return File.ReadAllText(filePath);
         }
-
-        private XmlDocument CreateBaseCapabilitiesXml(string serviceType, string version)
-        {
-            XmlDocument xmlDoc = new XmlDocument();
-
-            // 创建 XML 声明
-            XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
-            xmlDoc.AppendChild(xmlDeclaration);
-
-            // 根据服务类型定义命名空间
-            string ns = serviceType == "WMS" ? "http://www.opengis.net/wms" : "http://www.opengis.net/wmts/1.0";
-            string xsi = "http://www.w3.org/2001/XMLSchema-instance";
-            string schemaLocation = serviceType == "WMS"
-                ? "http://www.opengis.net/wms http://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd"
-                : "http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd";
-
-            // 创建根元素
-            XmlElement rootElement = xmlDoc.CreateElement($"{serviceType}_Capabilities", ns);
-            rootElement.SetAttribute("version", version);
-            rootElement.SetAttribute("xmlns", ns);
-            rootElement.SetAttribute("xmlns:xsi", xsi);
-            rootElement.SetAttribute("xsi:schemaLocation", schemaLocation);
-            xmlDoc.AppendChild(rootElement);
-
-            return xmlDoc;
-        }
-
         public void GenerateWmsCapabilitiesXml(string outputFilePath)
         {
 
@@ -707,223 +737,69 @@ namespace WindowsFormsApp4
                             ),
 
                             // ----- Sub-layer (北京市界) -----
-
-                            new XElement(wms + "Layer",
-                                new XAttribute("queryable", "1"),
-                                new XAttribute("opaque", "0"),
-                                new XElement(wms + "Name", "北京市界"),
-                                new XElement(wms + "Title", "北京市界"),
-                                new XElement(wms + "Abstract"),
-                                new XElement(wms + "KeywordList",
-                                    new XElement(wms + "Keyword", "features"),
-                                    new XElement(wms + "Keyword", "北京市界")
-                                ),
-                                new XElement(wms + "CRS", "EPSG:4326"),
-                                new XElement(wms + "CRS", "CRS:84"),
-                                new XElement(ows + "EX_GeographicBoundingBox",
-                                    new XElement(ows + "westBoundLongitude", "115.417284"),
-                                    new XElement(ows + "eastBoundLongitude", "117.500126"),
-                                    new XElement(ows + "southBoundLatitude", "39.438283"),
-                                    new XElement(ows + "northBoundLatitude", "41.059244")
-                                ),
-                                new XElement(wms + "BoundingBox",
-                                    new XAttribute("CRS", "CRS:84"),
-                                    new XAttribute("minx", "115.417284"),
-                                    new XAttribute("miny", "39.438283"),
-                                    new XAttribute("maxx", "117.500126"),
-                                    new XAttribute("maxy", "41.059244")
-                                ),
-                                new XElement(wms + "BoundingBox",
-                                    new XAttribute("CRS", "EPSG:4326"),
-                                    new XAttribute("minx", "39.438283"),
-                                    new XAttribute("miny", "115.417284"),
-                                    new XAttribute("maxx", "41.059244"),
-                                    new XAttribute("maxy", "117.500126")
-                                ),
-                                new XElement(wms + "Style",
-                                    new XElement(wms + "Name", "polygon"),
-                                    new XElement(wms + "Title", "Default Polygon"),
-                                    new XElement(wms + "Abstract", "A sample style that draws a polygon"),
-                                    new XElement(wms + "LegendURL",
-                                        new XAttribute("width", "20"),
-                                        new XAttribute("height", "20"),
-                                        new XElement(wms + "Format", "image/png"),
-                                        new XElement(wms + "OnlineResource",
-                                            new XAttribute(xlink + "type", "simple"),
-                                            new XAttribute(xlink + "href", "http://localhost:8080/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&width=20&height=20&layer=%E5%8C%97%E4%BA%AC%E5%B8%82%E7%95%8C")
-                                        )
-                                    )
-                                )
-                            )
+                            mapBox.Map.Layers.Select(layer =>
+        new XElement(wms + "Layer",
+            new XAttribute("queryable", "1"),
+            new XAttribute("opaque", "0"),
+            new XElement(wms + "Name", layer.LayerName),
+            new XElement(wms + "Title", layer.LayerName),
+            new XElement(wms + "Abstract"),
+            new XElement(wms + "KeywordList",
+                new XElement(wms + "Keyword", "features"),
+                new XElement(wms + "Keyword", layer.LayerName)
+            ),
+            new XElement(wms + "CRS", "EPSG:4326"),
+            new XElement(wms + "CRS", "CRS:84"),
+            new XElement(ows + "EX_GeographicBoundingBox",
+                new XElement(ows + "westBoundLongitude", "115.417284"),
+                new XElement(ows + "eastBoundLongitude", "117.500126"),
+                new XElement(ows + "southBoundLatitude", "39.438283"),
+                new XElement(ows + "northBoundLatitude", "41.059244")
+            ),
+            new XElement(wms + "BoundingBox",
+                new XAttribute("CRS", "CRS:84"),
+                new XAttribute("minx", "115.417284"),
+                new XAttribute("miny", "39.438283"),
+                new XAttribute("maxx", "117.500126"),
+                new XAttribute("maxy", "41.059244")
+            ),
+            new XElement(wms + "BoundingBox",
+                new XAttribute("CRS", "EPSG:4326"),
+                new XAttribute("minx", "39.438283"),
+                new XAttribute("miny", "115.417284"),
+                new XAttribute("maxx", "41.059244"),
+                new XAttribute("maxy", "117.500126")
+            ),
+            new XElement(wms + "Style",
+                new XElement(wms + "Name", "polygon"),
+                new XElement(wms + "Title", "Default Polygon"),
+                new XElement(wms + "Abstract", "A sample style that draws a polygon"),
+                new XElement(wms + "LegendURL",
+                    new XAttribute("width", "20"),
+                    new XAttribute("height", "20"),
+                    new XElement(wms + "Format", "image/png"),
+                    new XElement(wms + "OnlineResource",
+                        new XAttribute(xlink + "type", "simple"),
+                        new XAttribute(xlink + "href", $"http://yourdomain.com/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&width=20&height=20&layer={Uri.EscapeDataString(layer.LayerName)}")
+                    )
+                )
+            )
+        )
+        )
                         )
                     )
                 )
-            );
+            );         
             // 保存 XML 文档
             doc.Save(outputFilePath);
         }
      
         public void GenerateWmtsCapabilitiesXml(string outputFilePath)
         {
-            XmlDocument xmlDoc = CreateBaseCapabilitiesXml("WMTS", "1.0.0");
+           
+        
 
-            // 定义必要的命名空间
-            string ows = "http://www.opengis.net/ows/1.1";
-            string wmts = "http://www.opengis.net/wmts/1.0";
-            string xlink = "http://www.w3.org/1999/xlink";
 
-            XmlElement root = xmlDoc.DocumentElement;
-
-            // 添加必要的命名空间
-            root.SetAttribute("xmlns:ows", ows);
-            root.SetAttribute("xmlns:xlink", xlink);
-            root.SetAttribute("xmlns:gml", "http://www.opengis.net/gml");
-            root.SetAttribute("xmlns:wmts", wmts);
-
-            // 服务识别
-            XmlElement serviceIdentification = xmlDoc.CreateElement("ows:ServiceIdentification", ows);
-            root.AppendChild(serviceIdentification);
-
-            XmlElement title = xmlDoc.CreateElement("ows:Title", ows);
-            title.InnerText = "Sample WMTS Service";
-            serviceIdentification.AppendChild(title);
-
-            XmlElement serviceType = xmlDoc.CreateElement("ows:ServiceType", ows);
-            serviceType.InnerText = "OGC WMTS";
-            serviceIdentification.AppendChild(serviceType);
-
-            XmlElement serviceTypeVersion = xmlDoc.CreateElement("ows:ServiceTypeVersion", ows);
-            serviceTypeVersion.InnerText = "1.0.0";
-            serviceIdentification.AppendChild(serviceTypeVersion);
-
-            // 服务提供者
-            XmlElement serviceProvider = xmlDoc.CreateElement("ows:ServiceProvider", ows);
-            root.AppendChild(serviceProvider);
-
-            XmlElement providerName = xmlDoc.CreateElement("ows:ProviderName", ows);
-            providerName.InnerText = "Sample Provider";
-            serviceProvider.AppendChild(providerName);
-
-            // 操作元数据
-            XmlElement operationsMetadata = xmlDoc.CreateElement("ows:OperationsMetadata", ows);
-            root.AppendChild(operationsMetadata);
-            // 在此处定义 GetCapabilities, GetTile 等操作
-
-            // 内容部分
-            XmlElement contents = xmlDoc.CreateElement("Contents", wmts);
-            root.AppendChild(contents);
-
-            foreach (var layer in mapBox.Map.Layers.OfType<VectorLayer>())
-            {
-                XmlElement layerElement = xmlDoc.CreateElement("Layer", wmts);
-                contents.AppendChild(layerElement);
-
-                // 标识符
-                XmlElement identifier = xmlDoc.CreateElement("ows:Identifier", ows);
-                identifier.InnerText = layer.LayerName;
-                layerElement.AppendChild(identifier);
-
-                // 标题
-                XmlElement layerTitle = xmlDoc.CreateElement("ows:Title", ows);
-                layerTitle.InnerText = layer.LayerName; // 根据需要自定义
-                layerElement.AppendChild(layerTitle);
-
-                // WGS84 边界框
-                XmlElement wgs84BoundingBox = xmlDoc.CreateElement("ows:WGS84BoundingBox", ows);
-                layerElement.AppendChild(wgs84BoundingBox);
-
-                XmlElement lowerCorner = xmlDoc.CreateElement("ows:LowerCorner", ows);
-                lowerCorner.InnerText = $"{mapBox.Map.Envelope.MinX} {mapBox.Map.Envelope.MinY}";
-                wgs84BoundingBox.AppendChild(lowerCorner);
-
-                XmlElement upperCorner = xmlDoc.CreateElement("ows:UpperCorner", ows);
-                upperCorner.InnerText = $"{mapBox.Map.Envelope.MaxX} {mapBox.Map.Envelope.MaxY}";
-                wgs84BoundingBox.AppendChild(upperCorner);
-
-                // 支持的 CRS
-                XmlElement supportedCRS = xmlDoc.CreateElement("ows:SupportedCRS", ows);
-                supportedCRS.InnerText = "urn:ogc:def:crs:EPSG::4326"; // 根据需要调整
-                layerElement.AppendChild(supportedCRS);
-
-                // TileMatrixSetLink
-                XmlElement tileMatrixSetLink = xmlDoc.CreateElement("TileMatrixSetLink", wmts);
-                layerElement.AppendChild(tileMatrixSetLink);
-
-                XmlElement tileMatrixSet = xmlDoc.CreateElement("TileMatrixSet", wmts);
-                tileMatrixSet.InnerText = "GoogleMapsCompatible"; // 定义您的 TileMatrixSet
-                tileMatrixSetLink.AppendChild(tileMatrixSet);
-
-                // 格式
-                XmlElement format = xmlDoc.CreateElement("Format", wmts);
-                format.InnerText = "image/png";
-                layerElement.AppendChild(format);
-
-                // 样式
-                XmlElement style = xmlDoc.CreateElement("Style", wmts);
-                layerElement.AppendChild(style);
-
-                XmlElement defaultStyle = xmlDoc.CreateElement("Default", wmts);
-                defaultStyle.InnerText = "default";
-                style.AppendChild(defaultStyle);
-
-                XmlElement styleIdentifier = xmlDoc.CreateElement("ows:Identifier", ows);
-                styleIdentifier.InnerText = "default";
-                style.AppendChild(styleIdentifier);
-            }
-
-            // TileMatrixSet 定义
-            XmlElement tileMatrixSets = xmlDoc.CreateElement("TileMatrixSet", wmts);
-            contents.AppendChild(tileMatrixSets);
-
-            // 示例 TileMatrixSet（Google Maps 兼容）
-            XmlElement tileMatrixSetElement = xmlDoc.CreateElement("TileMatrixSet", wmts);
-            tileMatrixSets.AppendChild(tileMatrixSetElement);
-
-            XmlElement identifierTM = xmlDoc.CreateElement("ows:Identifier", ows);
-            identifierTM.InnerText = "GoogleMapsCompatible";
-            tileMatrixSetElement.AppendChild(identifierTM);
-
-            XmlElement supportedCRSTM = xmlDoc.CreateElement("ows:SupportedCRS", ows);
-            supportedCRSTM.InnerText = "urn:ogc:def:crs:EPSG::3857";
-            tileMatrixSetElement.AppendChild(supportedCRSTM);
-
-            // 定义不同缩放级别的 TileMatrix 元素
-            for (int z = 0; z <= 5; z++) // 根据需要调整缩放级别
-            {
-                XmlElement tileMatrix = xmlDoc.CreateElement("TileMatrix", wmts);
-                tileMatrixSetElement.AppendChild(tileMatrix);
-
-                XmlElement identifierZ = xmlDoc.CreateElement("ows:Identifier", ows);
-                identifierZ.InnerText = z.ToString();
-                tileMatrix.AppendChild(identifierZ);
-
-                XmlElement scaleDenominator = xmlDoc.CreateElement("ScaleDenominator", wmts);
-                scaleDenominator.InnerText = (156543.03392804062 / Math.Pow(2, z)).ToString("F6");
-                tileMatrix.AppendChild(scaleDenominator);
-
-                XmlElement topLeftCorner = xmlDoc.CreateElement("TopLeftCorner", wmts);
-                topLeftCorner.InnerText = "-20037508.3427892 20037508.3427892"; // 根据需要调整
-                tileMatrix.AppendChild(topLeftCorner);
-
-                XmlElement tileWidth = xmlDoc.CreateElement("TileWidth", wmts);
-                tileWidth.InnerText = "256";
-                tileMatrix.AppendChild(tileWidth);
-
-                XmlElement tileHeight = xmlDoc.CreateElement("TileHeight", wmts);
-                tileHeight.InnerText = "256";
-                tileMatrix.AppendChild(tileHeight);
-
-                XmlElement matrixWidth = xmlDoc.CreateElement("MatrixWidth", wmts);
-                matrixWidth.InnerText = $"{Math.Pow(2, z)}";
-                tileMatrix.AppendChild(matrixWidth);
-
-                XmlElement matrixHeight = xmlDoc.CreateElement("MatrixHeight", wmts);
-                matrixHeight.InnerText = $"{Math.Pow(2, z)}";
-                tileMatrix.AppendChild(matrixHeight);
-            }
-
-            // 保存 XML
-            xmlDoc.Save(outputFilePath);
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
