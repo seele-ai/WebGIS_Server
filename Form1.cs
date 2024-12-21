@@ -25,6 +25,7 @@ using System.Xml.Linq;
 using GeoAPI.Geometries;
 using System.Drawing.Imaging;
 using System.Globalization;
+using static System.Windows.Forms.LinkLabel;
 
 namespace WindowsFormsApp4
 {
@@ -228,53 +229,65 @@ namespace WindowsFormsApp4
         }
         private void GenerateWmtsTiles(SharpMap.Map map, string outputDirectory)
         {
-            int tileSize = 256; // 每个瓦片的大小
-            int zoomLevels = 5; // 生成的缩放级别数量
-            int totalTiles = 0;
+            int tileSize = 256; // 每个瓦片的大小（像素）
+            int zoomLevels = 5; // 生成的缩放级别数量（0 到 4）
             int processedTiles = 0;
+            // 获取地图的范围（Envelope）
+            var envelope = map.Envelope;
 
-            // 计算总瓦片数量
+            // 计算地图的宽度和高度
+            double mapWidth = envelope.Width;
+            double mapHeight = envelope.Height;
+
+            // 设置进度条的最大值
+            int totalTiles = 0;
             for (int zoom = 0; zoom < zoomLevels; zoom++)
             {
-                double resolution = map.Envelope.Width / (tileSize * Math.Pow(2, zoom));
-                int tilesX = (int)Math.Ceiling(map.Envelope.Width / (tileSize * resolution));
-                int tilesY = (int)Math.Ceiling(map.Envelope.Height / (tileSize * resolution));
-                totalTiles += tilesX * tilesY;
+                int tilesPerSide = (int)Math.Pow(2, zoom);
+                totalTiles += tilesPerSide * tilesPerSide;
             }
-
             progressBar.Maximum = totalTiles;
+            progressBar.Value = 0;
 
+            // 遍历每个缩放级别
             for (int zoom = 0; zoom < zoomLevels; zoom++)
             {
-                double resolution = map.Envelope.Width / (tileSize * Math.Pow(2, zoom));
-                int tilesX = (int)Math.Ceiling(map.Envelope.Width / (tileSize * resolution));
-                int tilesY = (int)Math.Ceiling(map.Envelope.Height / (tileSize * resolution));
+                int tilesPerSide = (int)Math.Pow(2, zoom); // 每边的瓦片数量为2的zoom次方
 
+                // 计算每个瓦片的地理范围
+                double tileWidth = mapWidth / tilesPerSide;
+                double tileHeight = mapHeight / tilesPerSide;
 
-                for (int x = 0; x < tilesX; x++)
+                // 遍历每一列和每一行的瓦片
+                for (int x = 0; x < tilesPerSide; x++)
                 {
-                    for (int y = 0; y < tilesY; y++)
+                    for (int y = 0; y < tilesPerSide; y++)
                     {
+                        // 计算当前瓦片的地理范围
                         var tileEnvelope = new GeoAPI.Geometries.Envelope(
-                            map.Envelope.MinX + x * tileSize * resolution,
-                            map.Envelope.MinX + (x + 1) * tileSize * resolution,
-                            map.Envelope.MinY + y * tileSize * resolution,
-                            map.Envelope.MinY + (y + 1) * tileSize * resolution);
+                            envelope.MinX + x * tileWidth,
+                            envelope.MinX + (x + 1) * tileWidth,
+                            envelope.MinY + y * tileHeight,
+                            envelope.MinY + (y + 1) * tileHeight
+                        );
 
+                        // 创建一个新的地图对象用于渲染当前瓦片
                         var tileMap = new SharpMap.Map(new Size(tileSize, tileSize))
                         {
-                            SRID = map.SRID,
-                            //BackgroundLayer = map.BackgroundLayer,
+                            SRID = map.SRID, // 保持与主地图相同的坐标参考系
                             BackColor = map.BackColor
                         };
 
+                        // 添加所有图层到当前瓦片的地图对象
                         foreach (var layer in map.Layers)
                         {
-                            tileMap.Layers.Add(layer);
+                            tileMap.Layers.Add(layer); // 使用Clone()确保每个瓦片独立
                         }
 
+                        // 设置当前瓦片的显示范围
                         tileMap.ZoomToBox(tileEnvelope);
 
+                        // 渲染地图到位图
                         using (var bitmap = new Bitmap(tileSize, tileSize))
                         {
                             using (var graphics = Graphics.FromImage(bitmap))
@@ -282,19 +295,23 @@ namespace WindowsFormsApp4
                                 tileMap.RenderMap(graphics);
                             }
 
-                            string tilePath = Path.Combine(outputDirectory, $"{zoom}/{x}/{y}.png");
+                            // 构建瓦片的保存路径，按照缩放级别/列/行的结构
+                            string tilePath = Path.Combine(outputDirectory, zoom.ToString(), x.ToString(), y.ToString() + ".png");
                             Directory.CreateDirectory(Path.GetDirectoryName(tilePath));
-                            bitmap.Save(tilePath, System.Drawing.Imaging.ImageFormat.Png);
-                            //bitmap.Save("D:/大三上/网络基础与WebGIS/小组作业/4.webGIS服务器/WindowsFormsApp4/WMTS_Tiles/1.png", System.Drawing.Imaging.ImageFormat.Png);
+
+                            // 保存瓦片为PNG格式
+                            bitmap.Save(tilePath, ImageFormat.Png);
                         }
 
+                        // 更新进度条
                         processedTiles++;
                         progressBar.Value = processedTiles;
                     }
                 }
             }
-            MessageBox.Show("切片完成！");
 
+            // 切片完成提示
+            MessageBox.Show("瓦片生成完成！");
 
         }
         private void StartHttpServer()
@@ -339,7 +356,7 @@ namespace WindowsFormsApp4
             var queryParams = System.Web.HttpUtility.ParseQueryString(query);
             string requestType = queryParams["REQUEST"];
 
-            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase))
+            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase)|| requestType.Equals("GetCapabilities/rest/info", StringComparison.OrdinalIgnoreCase))
             {
                 string capabilitiesXml = GetWmsCapabilities();
                 context.Response.ContentType = "text/xml";
@@ -494,18 +511,48 @@ namespace WindowsFormsApp4
             }
         }
 
+        private void LogError(string message)
+        {
+            // 使用适合的日志框架，如 log4net, NLog 等
+            // 这里简单地写入到文件
+            File.AppendAllText("server_logs.txt", $"{DateTime.Now}: {message}{Environment.NewLine}");
+        }
         private void ProcessWmtsRequest(HttpListenerContext context, string query, string[] parts)
         {
             var queryParams = HttpUtility.ParseQueryString(query);
             string requestType = queryParams["REQUEST"];
 
-            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase))
+            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase)|| requestType.Equals("GetCapabilities/rest/info", StringComparison.OrdinalIgnoreCase))
             {
-                string capabilitiesXml = GetWmtsCapabilities();
-                context.Response.ContentType = "text/xml";
-                using (StreamWriter writer = new StreamWriter(context.Response.OutputStream))
+                try
                 {
-                    writer.Write(capabilitiesXml);
+                    string capabilitiesXml = GetWmtsCapabilities();
+                    byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(capabilitiesXml);
+
+                    context.Response.ContentType = "text/xml";
+                    context.Response.ContentEncoding = System.Text.Encoding.UTF8;
+                    context.Response.ContentLength64 = responseBytes.Length;
+
+                    // 设置其他头信息（可选）
+                    context.Response.Headers.Add("Cache-Control", "no-cache");
+                    context.Response.Headers.Add("Expires", "-1");
+
+                    context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
+                }
+                catch (Exception ex)
+                {
+                    LogError($"Error generating WMTS GetCapabilities response: {ex.Message}");
+                    context.Response.StatusCode = 500;
+                    context.Response.StatusDescription = "Internal Server Error";
+                    string errorResponse = $"<Error>{ex.Message}</Error>";
+                    byte[] errorBytes = System.Text.Encoding.UTF8.GetBytes(errorResponse);
+                    context.Response.ContentType = "text/xml";
+                    context.Response.ContentLength64 = errorBytes.Length;
+                    context.Response.OutputStream.Write(errorBytes, 0, errorBytes.Length);
+                }
+                finally
+                {
+                    context.Response.OutputStream.Close();
                 }
             }
             else if (requestType.Equals("GetTile", StringComparison.OrdinalIgnoreCase))
@@ -542,12 +589,23 @@ namespace WindowsFormsApp4
             string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wms.xml";
             return File.ReadAllText(filePath);
         }
-        
+        private string cachedCapabilitiesXml = null;
+        private DateTime cacheTimestamp = DateTime.MinValue;
+        private readonly TimeSpan cacheDuration = TimeSpan.FromMinutes(10); // 根据需求调整
         private string GetWmtsCapabilities()
         {
+            if (cachedCapabilitiesXml != null && (DateTime.Now - cacheTimestamp) < cacheDuration)
+            {
+                return cachedCapabilitiesXml;
+            }
             // 返回 WMTS GetCapabilities 响应的 XML 字符串
             string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wmts.xml";
-            return File.ReadAllText(filePath);
+            // 生成Capabilities XML的逻辑
+            string capabilitiesXml = File.ReadAllText(filePath);
+            // 更新缓存
+            cachedCapabilitiesXml = capabilitiesXml;
+            cacheTimestamp = DateTime.Now;
+            return capabilitiesXml;
         }
         public void GenerateWmsCapabilitiesXml(string outputFilePath)
         {
@@ -581,24 +639,7 @@ namespace WindowsFormsApp4
                             new XAttribute(xlink + "type", "simple"),
                             new XAttribute(xlink + "href", "http://geoserver.org")
                         ),
-                        new XElement(wms + "ContactInformation",
-                            new XElement(wms + "ContactPersonPrimary",
-                                new XElement(wms + "ContactPerson", "Claudius Ptolomaeus"),
-                                new XElement(wms + "ContactOrganization", "OSGeo")
-                            ),
-                            new XElement(wms + "ContactPosition", "Chief Geographer"),
-                            new XElement(wms + "ContactAddress",
-                                new XElement(wms + "AddressType", "Work"),
-                                new XElement(wms + "Address", ""), // 空地址
-                                new XElement(wms + "City", "Alexandria"),
-                                new XElement(wms + "StateOrProvince", "Egypt"),
-                                new XElement(wms + "PostCode", ""), // 空邮编
-                                new XElement(wms + "Country", "Roman Empire")
-                            ),
-                            new XElement(wms + "ContactVoiceTelephone"),
-                            new XElement(wms + "ContactFacsimileTelephone"),
-                            new XElement(wms + "ContactElectronicMailAddress", "claudius.ptolomaeus@mercury.olympus.gov")
-                        ),
+                        
                         new XElement(wms + "Fees", "NONE"),
                         new XElement(wms + "AccessConstraints", "NONE")
                     ),
@@ -793,13 +834,237 @@ namespace WindowsFormsApp4
             // 保存 XML 文档
             doc.Save(outputFilePath);
         }
-     
+
         public void GenerateWmtsCapabilitiesXml(string outputFilePath)
         {
-           
+            // 定义命名空间作为类成员，便于在多个方法中使用
+            XNamespace wmts = "http://www.opengis.net/wmts/1.0";
+            XNamespace ows = "http://www.opengis.net/ows/1.1";
+            XNamespace xlink = "http://www.w3.org/1999/xlink";
+            XNamespace xsi = "http://www.w3.org/2001/XMLSchema-instance";
+            XNamespace gml = "http://www.opengis.net/gml";
+
+            var doc = new XDocument(
+                new XDeclaration("1.0", "UTF-8", null),
+                new XElement(wmts + "Capabilities",
+                    new XAttribute(XNamespace.Xmlns + "ows", ows),
+                    new XAttribute(XNamespace.Xmlns + "xlink", xlink),
+                    new XAttribute(XNamespace.Xmlns + "xsi", xsi),
+                    new XAttribute(XNamespace.Xmlns + "gml", gml),
+                    new XAttribute(xsi + "schemaLocation", "http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd"),
+                    new XAttribute("version", "1.0.0"),
+
+                    // ----- ServiceIdentification -----
+                    new XElement(ows + "ServiceIdentification",
+                        new XElement(ows + "Title", "GeoServer Web Map Tile Service"),
+                        new XElement(ows + "Abstract", "A compliant implementation of WMTS service."),
+                        new XElement(ows + "Keywords",
+                            new XElement(ows + "Keyword", "WMTS")
+                        ),
+                        new XElement(ows + "ServiceType", "OGC WMTS"),
+                        new XElement(ows + "ServiceTypeVersion", "1.0.0"),
+                        new XElement(ows + "Fees", "NONE"),
+                        new XElement(ows + "AccessConstraints", "NONE")
+                    ),
+
+                    // ----- ServiceProvider -----
+                    new XElement(ows + "ServiceProvider",
+                        new XElement(ows + "ProviderName", "http://geoserver.org/com"),
+                        new XElement(ows + "ProviderSite",
+                            new XAttribute(xlink + "type", "simple"),
+                            new XAttribute(xlink + "href", "http://geoserver.org")
+                        ),
+                        new XElement(ows + "ServiceContact",
+                            new XElement(ows + "IndividualName", "Claudius Ptolomaeus"),
+                            new XElement(ows + "PositionName", "Chief Geographer"),
+                            new XElement(ows + "ContactInfo",
+                                new XElement(ows + "Address",
+                                    new XElement(ows + "City", "Alexandria"),
+                                    new XElement(ows + "Country", "Roman Empire"),
+                                    new XElement(ows + "ElectronicMailAddress", "claudius.ptolomaeus@mercury.olympus.gov")
+                                )
+                            )
+                        )
+                    ),
+
+                    // ----- OperationsMetadata -----
+                    new XElement(ows + "OperationsMetadata",
+                        // GetCapabilities Operation
+                        new XElement(ows + "Operation",
+                            new XAttribute("name", "GetCapabilities"),
+                            new XElement(ows + "DCP",
+                                new XElement(ows + "HTTP",
+                                    new XElement(ows + "Get",
+                                        new XAttribute(xlink + "type", "simple"),
+                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
+                                        new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
+                                            new XElement(ows + "AllowedValues",
+                                                new XElement(ows + "Value", "KVP")
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        // GetTile Operation
+                        new XElement(ows + "Operation",
+                            new XAttribute("name", "GetTile"),
+                            new XElement(ows + "DCP",
+                                new XElement(ows + "HTTP",
+                                    new XElement(ows + "Get",
+                                        new XAttribute(xlink + "type", "simple"),
+                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
+                                        new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
+                                            new XElement(ows + "AllowedValues",
+                                                new XElement(ows + "Value", "KVP")
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        // GetFeatureInfo Operation
+                        new XElement(ows + "Operation",
+                            new XAttribute("name", "GetFeatureInfo"),
+                            new XElement(ows + "DCP",
+                                new XElement(ows + "HTTP",
+                                    new XElement(ows + "Get",
+                                        new XAttribute(xlink + "type", "simple"),
+                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
+                                        new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
+                                            new XElement(ows + "AllowedValues",
+                                                new XElement(ows + "Value", "KVP")
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // ----- Contents -----
+                    new XElement(wmts + "Contents",
+                        // Define TileMatrixSet
+                        new XElement(wmts + "TileMatrixSet",
+                            new XElement(ows + "Title", "EPSG:4326"),
+                            new XElement(ows + "Abstract", "WGS 84 / Plate Carree projection"),
+                            new XElement(ows + "Identifier", "EPSG:4326"),
+                            new XElement(ows + "SupportedCRS", "urn:ogc:def:crs:EPSG::4326"),
+
+                            // Define TileMatrix for each zoom level
+                            Enumerable.Range(0, 6).Select(z =>
+                                new XElement(wmts + "TileMatrix",
+                                    new XElement(ows + "Identifier", $"EPSG:4326:{z}"),
+                                    new XElement(wmts + "ScaleDenominator", (559082264.0287178 / Math.Pow(2, z)).ToString(CultureInfo.InvariantCulture)),
+                                    new XElement(wmts + "TopLeftCorner", "-180.0 90.0"),
+                                    new XElement(wmts + "TileWidth", "256"),
+                                    new XElement(wmts + "TileHeight", "256"),
+                                    new XElement(wmts + "MatrixWidth", ((int)Math.Pow(2, z)).ToString()),
+                                    new XElement(wmts + "MatrixHeight", ((int)Math.Pow(2, z)).ToString())
+                                )
+                            )
+                        ),
+
+                        // Dynamically add Layer information
+                        mapBox.Map.Layers.Select(layer =>
+                        {
+                            if (layer?.LayerName == null)
+                            {
+                                LogError("图层名称为空或无效。");
+                                return null; // 或者跳过该图层
+                            }
+
+                            return new XElement(wmts + "Layer",
+                                new XElement(ows + "Title", layer.LayerName), // 如 "水体"
+                                new XElement(ows + "Abstract", $"这是图层 {layer.LayerName} 的描述。"),
+                                new XElement(ows + "Identifier", layer.LayerName), // 如 "BJ:水体"
+
+                                // Style Definition
+                                new XElement(wmts + "Style",
+                                    new XElement(ows + "Identifier", "default"), // 使用统一的样式名称
+                                    new XElement(wmts + "LegendURL",
+                                        new XAttribute("format", "image/png"),
+                                        new XAttribute("width", "20"),
+                                        new XAttribute("height", "20"),
+                                        new XElement(ows + "OnlineResource",
+                                            new XAttribute(xlink + "type", "simple"),
+                                            new XAttribute(xlink + "href", $"http://localhost:8080/wms?service=WMS&request=GetLegendGraphic&format=image/png&width=20&height=20&layer={Uri.EscapeDataString(layer.LayerName)}")
+                                        )
+                                    )
+                                ),
+
+                                // Supported Formats
+                                new XElement(wmts + "Format", "image/png"),
+                                new XElement(wmts + "Format", "image/jpeg"),
+                                new XElement(wmts + "Format", "text/plain"),
+                                new XElement(wmts + "Format", "application/vnd.ogc.gml"),
+                                new XElement(wmts + "Format", "text/xml"),
+                                new XElement(wmts + "Format", "application/vnd.ogc.gml/3.1.1"),
+                                new XElement(wmts + "Format", "text/html"),
+                                new XElement(wmts + "Format", "application/json"),
+                                new XElement(wmts + "Format", "TileJSON"),
+
+                                // TileMatrixSetLink and TileMatrixSetLimits
+                                new XElement(wmts + "TileMatrixSetLink",
+                                    new XElement(wmts + "TileMatrixSet", "EPSG:4326"),
+                                    new XElement(wmts + "TileMatrixSetLimits",
+                                        GenerateTileMatrixLimitsXml()
+                                    )
+                                ),
+
+                                // ResourceURL Definitions
+                                new XElement(wmts + "ResourceURL", new XAttribute("format", "image/png"), new XAttribute("resourceType", "tile"),
+                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE={{style}}&TILEMATRIX={{TileMatrix}}&TILEROW={{TileRow}}&TILECOL={{TileCol}}&FORMAT=image/png")
+                                ),
+                                new XElement(wmts + "ResourceURL", new XAttribute("format", "image/jpeg"), new XAttribute("resourceType", "tile"),
+                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE={{style}}&TILEMATRIX={{TileMatrix}}&TILEROW={{TileRow}}&TILECOL={{TileCol}}&FORMAT=image/jpeg")
+                                )
+                            );
+                        }).Where(layer => layer != null) // 过滤掉可能的 null 图层
+                    ),
+
+                    // ----- ServiceMetadataURL -----
+                    new XElement(wmts + "ServiceMetadataURL",
+                        new XAttribute(xlink + "type", "simple"),
+                        new XAttribute(xlink + "href", "http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0")
+                    )
+                )
+            );
+
+            // 保存 XML 文档到指定路径，确保使用 UTF-8 编码
+            try
+            {
+                using (var writer = new StreamWriter(outputFilePath, false, Encoding.UTF8))
+                {
+                    doc.Save(writer);
+                }
+                
+            }
+            catch (Exception ex)
+            {
+                LogError($"生成 WMTS Capabilities XML 失败：{ex.Message}\n{ex.StackTrace}");
+                // 根据上下文决定是否抛出异常或进行其他处理
+            }
+        }
+
         
+        private IEnumerable<XElement> GenerateTileMatrixLimitsXml()
+        {
+            XNamespace wmts = "http://www.opengis.net/wmts/1.0";
+            // 假设最大缩放级别为20
+            int maxZoomLevel = 5;
 
-
+            return Enumerable.Range(0, maxZoomLevel + 1).Select(z =>
+            {
+                int tilesPerSide = (int)Math.Pow(2, z);
+                return new XElement(wmts + "TileMatrixLimits",
+                    new XElement(wmts + "TileMatrix", $"EPSG:4326:{z}"),
+                    new XElement(wmts + "MinTileRow", "0"),
+                    new XElement(wmts + "MaxTileRow", (tilesPerSide - 1).ToString()),
+                    new XElement(wmts + "MinTileCol", "0"),
+                    new XElement(wmts + "MaxTileCol", (tilesPerSide - 1).ToString())
+                );
+            });
         }
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
