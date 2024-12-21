@@ -922,24 +922,24 @@ namespace WindowsFormsApp4
                                     )
                                 )
                             )
-                        ),
-                        // GetFeatureInfo Operation
-                        new XElement(ows + "Operation",
-                            new XAttribute("name", "GetFeatureInfo"),
-                            new XElement(ows + "DCP",
-                                new XElement(ows + "HTTP",
-                                    new XElement(ows + "Get",
-                                        new XAttribute(xlink + "type", "simple"),
-                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
-                                        new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
-                                            new XElement(ows + "AllowedValues",
-                                                new XElement(ows + "Value", "KVP")
-                                            )
-                                        )
-                                    )
-                                )
-                            )
                         )
+                        //// GetFeatureInfo Operation
+                        //new XElement(ows + "Operation",
+                        //    new XAttribute("name", "GetFeatureInfo"),
+                        //    new XElement(ows + "DCP",
+                        //        new XElement(ows + "HTTP",
+                        //            new XElement(ows + "Get",
+                        //                new XAttribute(xlink + "type", "simple"),
+                        //                new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
+                        //                new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
+                        //                    new XElement(ows + "AllowedValues",
+                        //                        new XElement(ows + "Value", "KVP")
+                        //                    )
+                        //                )
+                        //            )
+                        //        )
+                        //    )
+                        //)
                     ),
 
                     // ----- Contents -----
@@ -954,7 +954,7 @@ namespace WindowsFormsApp4
                             // Define TileMatrix for each zoom level
                             Enumerable.Range(0, 6).Select(z =>
                                 new XElement(wmts + "TileMatrix",
-                                    new XElement(ows + "Identifier", $"EPSG:4326:{z}"),
+                                    new XElement(ows + "Identifier", $"{z}"),
                                     new XElement(wmts + "ScaleDenominator", (559082264.0287178 / Math.Pow(2, z)).ToString(CultureInfo.InvariantCulture)),
                                     new XElement(wmts + "TopLeftCorner", "-180.0 90.0"),
                                     new XElement(wmts + "TileWidth", "256"),
@@ -996,13 +996,6 @@ namespace WindowsFormsApp4
                                 // Supported Formats
                                 new XElement(wmts + "Format", "image/png"),
                                 new XElement(wmts + "Format", "image/jpeg"),
-                                new XElement(wmts + "Format", "text/plain"),
-                                new XElement(wmts + "Format", "application/vnd.ogc.gml"),
-                                new XElement(wmts + "Format", "text/xml"),
-                                new XElement(wmts + "Format", "application/vnd.ogc.gml/3.1.1"),
-                                new XElement(wmts + "Format", "text/html"),
-                                new XElement(wmts + "Format", "application/json"),
-                                new XElement(wmts + "Format", "TileJSON"),
 
                                 // TileMatrixSetLink and TileMatrixSetLimits
                                 new XElement(wmts + "TileMatrixSetLink",
@@ -1014,10 +1007,10 @@ namespace WindowsFormsApp4
 
                                 // ResourceURL Definitions
                                 new XElement(wmts + "ResourceURL", new XAttribute("format", "image/png"), new XAttribute("resourceType", "tile"),
-                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE={{style}}&TILEMATRIX={{TileMatrix}}&TILEROW={{TileRow}}&TILECOL={{TileCol}}&FORMAT=image/png")
+                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE=default&TILEMATRIX={{TileMatrix}}&TILECOL={{TileCol}}&TILEROW={{TileRow}}&FORMAT=image/png")
                                 ),
                                 new XElement(wmts + "ResourceURL", new XAttribute("format", "image/jpeg"), new XAttribute("resourceType", "tile"),
-                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE={{style}}&TILEMATRIX={{TileMatrix}}&TILEROW={{TileRow}}&TILECOL={{TileCol}}&FORMAT=image/jpeg")
+                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE=default&TILEMATRIX={{TileMatrix}}&TILECOL={{TileCol}}&TILEROW={{TileRow}}&FORMAT=image/jpeg")
                                 )
                             );
                         }).Where(layer => layer != null) // 过滤掉可能的 null 图层
@@ -1043,7 +1036,7 @@ namespace WindowsFormsApp4
             catch (Exception ex)
             {
                 LogError($"生成 WMTS Capabilities XML 失败：{ex.Message}\n{ex.StackTrace}");
-                // 根据上下文决定是否抛出异常或进行其他处理
+                
             }
         }
 
@@ -1058,7 +1051,7 @@ namespace WindowsFormsApp4
             {
                 int tilesPerSide = (int)Math.Pow(2, z);
                 return new XElement(wmts + "TileMatrixLimits",
-                    new XElement(wmts + "TileMatrix", $"EPSG:4326:{z}"),
+                    new XElement(wmts + "TileMatrix", $"{z}"),
                     new XElement(wmts + "MinTileRow", "0"),
                     new XElement(wmts + "MaxTileRow", (tilesPerSide - 1).ToString()),
                     new XElement(wmts + "MinTileCol", "0"),
