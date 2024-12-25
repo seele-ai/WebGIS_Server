@@ -538,13 +538,22 @@ namespace WindowsFormsApp4
                 string zoom = queryParams["TILEMATRIX"];
                 string x = queryParams["TILECOL"];
                 string y = queryParams["TILEROW"];
-                // 移除大括号字符
+                
                 zoom = zoom.Replace("{", "").Replace("}", "");
                 x = x.Replace("{", "").Replace("}", "");
                 y = y.Replace("{", "").Replace("}", "");
 
+                int x1 = int.Parse(x);
+                int y1=int.Parse(y);
+                y1 = (int)Math.Pow(2, int.Parse(zoom)) - 1 - y1;
+
+                int pad = 0;
+                if (int.Parse(zoom) <= 5) pad = 2;
+                else if (int.Parse(zoom) <= 11) pad = 4;
+                else pad = 6;
+
                 // 使用修正后的路径构建完整路径
-                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "C:\\ProgramData\\GeoServer\\gwc\\beijing_gis_osm_landuse_a_free_1", zoom, $"{x}_{y}.png");
+                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "D:\\datasource\\beijing_gis_osm_landuse_a_free_1", $"EPSG_900913_{zoom}", $"{x1.ToString().PadLeft(pad, '0')}_{y1.ToString().PadLeft(pad, '0')}.png");
                 if (File.Exists(tilePath))
                 {
                     context.Response.ContentType = "image/png";
