@@ -1,0 +1,180 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Capabilities xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd" version="1.0.0" xmlns="http://www.opengis.net/wmts/1.0">
+  <ows:ServiceIdentification>
+    <ows:Title>GeoServer Web Map Tile Service</ows:Title>
+    <ows:Abstract>A compliant implementation of WMTS service.</ows:Abstract>
+    <ows:Keywords>
+      <ows:Keyword>WMTS</ows:Keyword>
+    </ows:Keywords>
+    <ows:ServiceType>OGC WMTS</ows:ServiceType>
+    <ows:ServiceTypeVersion>1.0.0</ows:ServiceTypeVersion>
+    <ows:Fees>NONE</ows:Fees>
+    <ows:AccessConstraints>NONE</ows:AccessConstraints>
+  </ows:ServiceIdentification>
+  <ows:ServiceProvider>
+    <ows:ProviderName>http://geoserver.org/com</ows:ProviderName>
+    <ows:ProviderSite xlink:type="simple" xlink:href="http://geoserver.org" />
+    <ows:ServiceContact>
+      <ows:IndividualName>Claudius Ptolomaeus</ows:IndividualName>
+      <ows:PositionName>Chief Geographer</ows:PositionName>
+      <ows:ContactInfo>
+        <ows:Address>
+          <ows:City>Alexandria</ows:City>
+          <ows:Country>Roman Empire</ows:Country>
+          <ows:ElectronicMailAddress>claudius.ptolomaeus@mercury.olympus.gov</ows:ElectronicMailAddress>
+        </ows:Address>
+      </ows:ContactInfo>
+    </ows:ServiceContact>
+  </ows:ServiceProvider>
+  <ows:OperationsMetadata>
+    <ows:Operation name="GetCapabilities">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:type="simple" xlink:href="http://localhost:8080/wmts?SERVICE=WMTS&amp;">
+            <ows:Constraint name="GetEncoding">
+              <ows:AllowedValues>
+                <ows:Value>KVP</ows:Value>
+              </ows:AllowedValues>
+            </ows:Constraint>
+          </ows:Get>
+        </ows:HTTP>
+      </ows:DCP>
+    </ows:Operation>
+    <ows:Operation name="GetTile">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:type="simple" xlink:href="http://localhost:8080/wmts?SERVICE=WMTS&amp;">
+            <ows:Constraint name="GetEncoding">
+              <ows:AllowedValues>
+                <ows:Value>KVP</ows:Value>
+              </ows:AllowedValues>
+            </ows:Constraint>
+          </ows:Get>
+        </ows:HTTP>
+      </ows:DCP>
+    </ows:Operation>
+  </ows:OperationsMetadata>
+  <Contents>
+    <Layer>
+      <ows:Title>gis_osm_landuse_a_free_1</ows:Title>
+      <ows:Abstract>这是图层 gis_osm_landuse_a_free_1 的描述。</ows:Abstract>
+      <ows:Identifier>gis_osm_landuse_a_free_1</ows:Identifier>
+      <Style isDefault="true">
+        <ows:Identifier>default</ows:Identifier>
+      </Style>
+      <Format>image/png</Format>
+      <Format>image/jpeg</Format>
+      <TileMatrixSetLink>
+        <TileMatrixSet>EPSG:4326</TileMatrixSet>
+        <TileMatrixSetLimits>
+          <TileMatrixLimits>
+            <TileMatrix>0</TileMatrix>
+            <MinTileRow>0</MinTileRow>
+            <MaxTileRow>0</MaxTileRow>
+            <MinTileCol>0</MinTileCol>
+            <MaxTileCol>0</MaxTileCol>
+          </TileMatrixLimits>
+          <TileMatrixLimits>
+            <TileMatrix>1</TileMatrix>
+            <MinTileRow>0</MinTileRow>
+            <MaxTileRow>1</MaxTileRow>
+            <MinTileCol>0</MinTileCol>
+            <MaxTileCol>1</MaxTileCol>
+          </TileMatrixLimits>
+          <TileMatrixLimits>
+            <TileMatrix>2</TileMatrix>
+            <MinTileRow>0</MinTileRow>
+            <MaxTileRow>3</MaxTileRow>
+            <MinTileCol>0</MinTileCol>
+            <MaxTileCol>3</MaxTileCol>
+          </TileMatrixLimits>
+          <TileMatrixLimits>
+            <TileMatrix>3</TileMatrix>
+            <MinTileRow>0</MinTileRow>
+            <MaxTileRow>7</MaxTileRow>
+            <MinTileCol>0</MinTileCol>
+            <MaxTileCol>7</MaxTileCol>
+          </TileMatrixLimits>
+          <TileMatrixLimits>
+            <TileMatrix>4</TileMatrix>
+            <MinTileRow>0</MinTileRow>
+            <MaxTileRow>15</MaxTileRow>
+            <MinTileCol>0</MinTileCol>
+            <MaxTileCol>15</MaxTileCol>
+          </TileMatrixLimits>
+          <TileMatrixLimits>
+            <TileMatrix>5</TileMatrix>
+            <MinTileRow>0</MinTileRow>
+            <MaxTileRow>31</MaxTileRow>
+            <MinTileCol>0</MinTileCol>
+            <MaxTileCol>31</MaxTileCol>
+          </TileMatrixLimits>
+        </TileMatrixSetLimits>
+      </TileMatrixSetLink>
+      <ResourceURL format="image/png" resourceType="tile" template="http://localhost:8080/wmts?request=GetTile&amp;style={style}&amp;TileMatrixSet={TileMatrixSet}&amp;TileMatrix={TileMatrix}&amp;TileRow={TileRow}&amp;TileCol={TileCol}&amp;format=image/png" />
+      <ResourceURL format="image/jpeg" resourceType="tile" template="http://localhost:8080/wmts?request=GetTile&amp;style={style}&amp;TileMatrixSet={TileMatrixSet}&amp;TileMatrix={TileMatrix}&amp;TileRow={TileRow}&amp;TileCol={TileCol}&amp;format=image/jpeg" />
+    </Layer>
+    <TileMatrixSet>
+      <ows:Title>EPSG:4326</ows:Title>
+      <ows:Abstract>EPSG:4326 projection</ows:Abstract>
+      <ows:Identifier>EPSG:4326</ows:Identifier>
+      <ows:SupportedCRS>urn:ogc:def:crs:EPSG:4326</ows:SupportedCRS>
+      <TileMatrix>
+        <ows:Identifier>0</ows:Identifier>
+        <ows:ScaleDenominator>818.42839793812</ows:ScaleDenominator>
+        <ows:TopLeftCorner>41.059777 114.8469171</ows:TopLeftCorner>
+        <ows:TileWidth>256</ows:TileWidth>
+        <ows:TileHeight>256</ows:TileHeight>
+        <ows:MatrixWidth>1</ows:MatrixWidth>
+        <ows:MatrixHeight>1</ows:MatrixHeight>
+      </TileMatrix>
+      <TileMatrix>
+        <ows:Identifier>1</ows:Identifier>
+        <ows:ScaleDenominator>409.21419896906</ows:ScaleDenominator>
+        <ows:TopLeftCorner>41.059777 114.8469171</ows:TopLeftCorner>
+        <ows:TileWidth>256</ows:TileWidth>
+        <ows:TileHeight>256</ows:TileHeight>
+        <ows:MatrixWidth>2</ows:MatrixWidth>
+        <ows:MatrixHeight>2</ows:MatrixHeight>
+      </TileMatrix>
+      <TileMatrix>
+        <ows:Identifier>2</ows:Identifier>
+        <ows:ScaleDenominator>204.60709948453</ows:ScaleDenominator>
+        <ows:TopLeftCorner>41.059777 114.8469171</ows:TopLeftCorner>
+        <ows:TileWidth>256</ows:TileWidth>
+        <ows:TileHeight>256</ows:TileHeight>
+        <ows:MatrixWidth>4</ows:MatrixWidth>
+        <ows:MatrixHeight>4</ows:MatrixHeight>
+      </TileMatrix>
+      <TileMatrix>
+        <ows:Identifier>3</ows:Identifier>
+        <ows:ScaleDenominator>102.303549742265</ows:ScaleDenominator>
+        <ows:TopLeftCorner>41.059777 114.8469171</ows:TopLeftCorner>
+        <ows:TileWidth>256</ows:TileWidth>
+        <ows:TileHeight>256</ows:TileHeight>
+        <ows:MatrixWidth>8</ows:MatrixWidth>
+        <ows:MatrixHeight>8</ows:MatrixHeight>
+      </TileMatrix>
+      <TileMatrix>
+        <ows:Identifier>4</ows:Identifier>
+        <ows:ScaleDenominator>51.1517748711325</ows:ScaleDenominator>
+        <ows:TopLeftCorner>41.059777 114.8469171</ows:TopLeftCorner>
+        <ows:TileWidth>256</ows:TileWidth>
+        <ows:TileHeight>256</ows:TileHeight>
+        <ows:MatrixWidth>16</ows:MatrixWidth>
+        <ows:MatrixHeight>16</ows:MatrixHeight>
+      </TileMatrix>
+      <TileMatrix>
+        <ows:Identifier>5</ows:Identifier>
+        <ows:ScaleDenominator>25.5758874355663</ows:ScaleDenominator>
+        <ows:TopLeftCorner>41.059777 114.8469171</ows:TopLeftCorner>
+        <ows:TileWidth>256</ows:TileWidth>
+        <ows:TileHeight>256</ows:TileHeight>
+        <ows:MatrixWidth>32</ows:MatrixWidth>
+        <ows:MatrixHeight>32</ows:MatrixHeight>
+      </TileMatrix>
+    </TileMatrixSet>
+  </Contents>
+  <ServiceMetadataURL xlink:type="simple" xlink:href="http://localhost:8080/wmts?SERVICE=WMTS&amp;REQUEST=GetCapabilities&amp;VERSION=1.0.0" />
+  <ServiceMetadataURL xlink:type="simple" xlink:href="http://localhost:8080/wmts?file=wmts.xml" />
+</Capabilities>
