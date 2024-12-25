@@ -26,6 +26,7 @@ using GeoAPI.Geometries;
 using System.Drawing.Imaging;
 using System.Globalization;
 using static System.Windows.Forms.LinkLabel;
+using System.Web.UI.WebControls;
 
 namespace WindowsFormsApp4
 {
@@ -86,7 +87,7 @@ namespace WindowsFormsApp4
                     string shapeFilePath = openFileDialog.FileName;
                     string sldPath = GetSldFilePath(shapeFilePath);
                     AddLayer(shapeFilePath, sldPath);
-                    string wmsCapabilitiesPath = "D:\\datasource\\WebGIS_Server\\xml\\wms.xml";
+                    string wmsCapabilitiesPath = "D:\\datasource\\GISServer\\xml\\wms.xml";
                     GenerateWmsCapabilitiesXml(wmsCapabilitiesPath);
                    
                 }
@@ -155,7 +156,7 @@ namespace WindowsFormsApp4
             private CheckedListBox layerListBox;
             private IList<ILayer> layers;
             private MapBox mapBox;
-            private Button deleteLayerButton;
+            private System.Windows.Forms.Button deleteLayerButton;
             
             public LayerManagerForm(IList<ILayer> layers)
             {
@@ -178,7 +179,7 @@ namespace WindowsFormsApp4
                 }
 
                 layerListBox.ItemCheck += LayerListBox_ItemCheck;
-                deleteLayerButton = new Button
+                deleteLayerButton = new System.Windows.Forms.Button
                 {
                     Text = "删除选中图层",
                     Dock = DockStyle.Bottom
@@ -223,9 +224,9 @@ namespace WindowsFormsApp4
             //GenerateWmtsTiles(mapBox.Map, outputDirectory);
 
             string outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles");
-            GenerateWmtsTiles(mapBox.Map, outputDirectory);
-            string wmtsCapabilitiesPath = "D:\\datasource\\WebGIS_Server\\xml\\wmts.xml";
-            GenerateWmtsCapabilitiesXml(wmtsCapabilitiesPath);
+            //GenerateWmtsTiles(mapBox.Map, outputDirectory);
+            //string wmtsCapabilitiesPath = "D:\\datasource\\GISServer\\xml\\wmts1.xml";
+            //GenerateWmtsCapabilitiesXml(wmtsCapabilitiesPath);
         }
         private void GenerateWmtsTiles(SharpMap.Map map, string outputDirectory)
         {
@@ -234,6 +235,7 @@ namespace WindowsFormsApp4
             int processedTiles = 0;
             // 获取地图的范围（Envelope）
             var envelope = map.Envelope;
+
 
             // 计算地图的宽度和高度
             double mapWidth = envelope.Width;
@@ -522,46 +524,27 @@ namespace WindowsFormsApp4
             var queryParams = HttpUtility.ParseQueryString(query);
             string requestType = queryParams["REQUEST"];
 
-            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase)|| requestType.Equals("GetCapabilities/rest/info", StringComparison.OrdinalIgnoreCase))
+            if (requestType.Equals("GetCapabilities", StringComparison.OrdinalIgnoreCase) || requestType.Equals("GetCapabilities/rest/info", StringComparison.OrdinalIgnoreCase))
             {
-                try
+                string capabilitiesXml = GetWmtsCapabilities();
+                context.Response.ContentType = "text/xml";
+                using (StreamWriter writer = new StreamWriter(context.Response.OutputStream))
                 {
-                    string capabilitiesXml = GetWmtsCapabilities();
-                    byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(capabilitiesXml);
-
-                    context.Response.ContentType = "text/xml";
-                    context.Response.ContentEncoding = System.Text.Encoding.UTF8;
-                    context.Response.ContentLength64 = responseBytes.Length;
-
-                    // 设置其他头信息（可选）
-                    context.Response.Headers.Add("Cache-Control", "no-cache");
-                    context.Response.Headers.Add("Expires", "-1");
-
-                    context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
-                }
-                catch (Exception ex)
-                {
-                    LogError($"Error generating WMTS GetCapabilities response: {ex.Message}");
-                    context.Response.StatusCode = 500;
-                    context.Response.StatusDescription = "Internal Server Error";
-                    string errorResponse = $"<Error>{ex.Message}</Error>";
-                    byte[] errorBytes = System.Text.Encoding.UTF8.GetBytes(errorResponse);
-                    context.Response.ContentType = "text/xml";
-                    context.Response.ContentLength64 = errorBytes.Length;
-                    context.Response.OutputStream.Write(errorBytes, 0, errorBytes.Length);
-                }
-                finally
-                {
-                    context.Response.OutputStream.Close();
+                    writer.Write(capabilitiesXml);
                 }
             }
             else if (requestType.Equals("GetTile", StringComparison.OrdinalIgnoreCase))
             {
-                int zoom = int.Parse(queryParams["TILEMATRIX"]);
-                int x = int.Parse(queryParams["TILECOL"]);
-                int y = int.Parse(queryParams["TILEROW"]);
+                string zoom = queryParams["TILEMATRIX"];
+                string x = queryParams["TILECOL"];
+                string y = queryParams["TILEROW"];
+                // 移除大括号字符
+                zoom = zoom.Replace("{", "").Replace("}", "");
+                x = x.Replace("{", "").Replace("}", "");
+                y = y.Replace("{", "").Replace("}", "");
 
-                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles", $"{zoom}\\{x}\\{y}.png");
+                // 使用修正后的路径构建完整路径
+                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "C:\\ProgramData\\GeoServer\\gwc\\beijing_gis_osm_landuse_a_free_1", zoom, $"{x}_{y}.png");
                 if (File.Exists(tilePath))
                 {
                     context.Response.ContentType = "image/png";
@@ -586,7 +569,7 @@ namespace WindowsFormsApp4
         {
 
             // 返回 WMS GetCapabilities 响应的 XML 字符串
-            string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wms.xml";
+            string filePath = "D:\\datasource\\GISServer\\xml\\wms.xml";
             return File.ReadAllText(filePath);
         }
         private string cachedCapabilitiesXml = null;
@@ -594,17 +577,17 @@ namespace WindowsFormsApp4
         private readonly TimeSpan cacheDuration = TimeSpan.FromMinutes(10); // 根据需求调整
         private string GetWmtsCapabilities()
         {
-            if (cachedCapabilitiesXml != null && (DateTime.Now - cacheTimestamp) < cacheDuration)
-            {
-                return cachedCapabilitiesXml;
-            }
+            //if (cachedCapabilitiesXml != null && (DateTime.Now - cacheTimestamp) < cacheDuration)
+            //{
+                //return cachedCapabilitiesXml;
+            //}
             // 返回 WMTS GetCapabilities 响应的 XML 字符串
-            string filePath = "D:\\datasource\\WebGIS_Server\\xml\\wmts.xml";
+            string filePath = "D:\\datasource\\GISServer\\xml\\wmts.xml";
             // 生成Capabilities XML的逻辑
             string capabilitiesXml = File.ReadAllText(filePath);
             // 更新缓存
-            cachedCapabilitiesXml = capabilitiesXml;
-            cacheTimestamp = DateTime.Now;
+            //cachedCapabilitiesXml = capabilitiesXml;
+            //cacheTimestamp = DateTime.Now;
             return capabilitiesXml;
         }
         public void GenerateWmsCapabilitiesXml(string outputFilePath)
@@ -792,24 +775,24 @@ namespace WindowsFormsApp4
             new XElement(wms + "CRS", "EPSG:4326"),
             new XElement(wms + "CRS", "CRS:84"),
             new XElement(ows + "EX_GeographicBoundingBox",
-                new XElement(ows + "westBoundLongitude", "115.417284"),
-                new XElement(ows + "eastBoundLongitude", "117.500126"),
-                new XElement(ows + "southBoundLatitude", "39.438283"),
-                new XElement(ows + "northBoundLatitude", "41.059244")
+                new XElement(ows + "westBoundLongitude", layer.Envelope.MinX),
+                new XElement(ows + "eastBoundLongitude", layer.Envelope.MaxX),
+                new XElement(ows + "southBoundLatitude", layer.Envelope.MinY),
+                new XElement(ows + "northBoundLatitude", layer.Envelope.MaxY)
             ),
             new XElement(wms + "BoundingBox",
                 new XAttribute("CRS", "CRS:84"),
-                new XAttribute("minx", "115.417284"),
-                new XAttribute("miny", "39.438283"),
-                new XAttribute("maxx", "117.500126"),
-                new XAttribute("maxy", "41.059244")
+                new XAttribute("minx", layer.Envelope.MinX),
+                new XAttribute("miny", layer.Envelope.MinY),
+                new XAttribute("maxx", layer.Envelope.MaxX),
+                new XAttribute("maxy", layer.Envelope.MaxY)
             ),
             new XElement(wms + "BoundingBox",
                 new XAttribute("CRS", "EPSG:4326"),
-                new XAttribute("minx", "39.438283"),
-                new XAttribute("miny", "115.417284"),
-                new XAttribute("maxx", "41.059244"),
-                new XAttribute("maxy", "117.500126")
+                new XAttribute("minx", layer.Envelope.MinY),
+                new XAttribute("miny", layer.Envelope.MinX),
+                new XAttribute("maxx", layer.Envelope.MaxY),
+                new XAttribute("maxy", layer.Envelope.MaxX)
             ),
             new XElement(wms + "Style",
                 new XElement(wms + "Name", "polygon"),
@@ -835,7 +818,7 @@ namespace WindowsFormsApp4
             doc.Save(outputFilePath);
         }
 
-        public void GenerateWmtsCapabilitiesXml(string outputFilePath)
+        public void GenerateWmtsCapabilitiesXml(string outputFilePath, string supportedCrs = "EPSG:4326")
         {
             // 定义命名空间作为类成员，便于在多个方法中使用
             XNamespace wmts = "http://www.opengis.net/wmts/1.0";
@@ -854,7 +837,7 @@ namespace WindowsFormsApp4
                     new XAttribute(xsi + "schemaLocation", "http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd"),
                     new XAttribute("version", "1.0.0"),
 
-                    // ----- ServiceIdentification -----
+                    // ----- ServiceIdentification ----- 
                     new XElement(ows + "ServiceIdentification",
                         new XElement(ows + "Title", "GeoServer Web Map Tile Service"),
                         new XElement(ows + "Abstract", "A compliant implementation of WMTS service."),
@@ -867,7 +850,7 @@ namespace WindowsFormsApp4
                         new XElement(ows + "AccessConstraints", "NONE")
                     ),
 
-                    // ----- ServiceProvider -----
+                    // ----- ServiceProvider ----- 
                     new XElement(ows + "ServiceProvider",
                         new XElement(ows + "ProviderName", "http://geoserver.org/com"),
                         new XElement(ows + "ProviderSite",
@@ -887,7 +870,7 @@ namespace WindowsFormsApp4
                         )
                     ),
 
-                    // ----- OperationsMetadata -----
+                    // ----- OperationsMetadata ----- 
                     new XElement(ows + "OperationsMetadata",
                         // GetCapabilities Operation
                         new XElement(ows + "Operation",
@@ -896,7 +879,7 @@ namespace WindowsFormsApp4
                                 new XElement(ows + "HTTP",
                                     new XElement(ows + "Get",
                                         new XAttribute(xlink + "type", "simple"),
-                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
+                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts?SERVICE=WMTS&"),
                                         new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
                                             new XElement(ows + "AllowedValues",
                                                 new XElement(ows + "Value", "KVP")
@@ -913,7 +896,7 @@ namespace WindowsFormsApp4
                                 new XElement(ows + "HTTP",
                                     new XElement(ows + "Get",
                                         new XAttribute(xlink + "type", "simple"),
-                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
+                                        new XAttribute(xlink + "href", "http://localhost:8080/wmts?SERVICE=WMTS&"),
                                         new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
                                             new XElement(ows + "AllowedValues",
                                                 new XElement(ows + "Value", "KVP")
@@ -923,48 +906,10 @@ namespace WindowsFormsApp4
                                 )
                             )
                         )
-                        //// GetFeatureInfo Operation
-                        //new XElement(ows + "Operation",
-                        //    new XAttribute("name", "GetFeatureInfo"),
-                        //    new XElement(ows + "DCP",
-                        //        new XElement(ows + "HTTP",
-                        //            new XElement(ows + "Get",
-                        //                new XAttribute(xlink + "type", "simple"),
-                        //                new XAttribute(xlink + "href", "http://localhost:8080/wmts"),
-                        //                new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
-                        //                    new XElement(ows + "AllowedValues",
-                        //                        new XElement(ows + "Value", "KVP")
-                        //                    )
-                        //                )
-                        //            )
-                        //        )
-                        //    )
-                        //)
                     ),
 
-                    // ----- Contents -----
+                    // ----- Contents ----- 
                     new XElement(wmts + "Contents",
-                        // Define TileMatrixSet
-                        new XElement(wmts + "TileMatrixSet",
-                            new XElement(ows + "Title", "EPSG:4326"),
-                            new XElement(ows + "Abstract", "WGS 84 / Plate Carree projection"),
-                            new XElement(ows + "Identifier", "EPSG:4326"),
-                            new XElement(ows + "SupportedCRS", "urn:ogc:def:crs:EPSG::4326"),
-
-                            // Define TileMatrix for each zoom level
-                            Enumerable.Range(0, 6).Select(z =>
-                                new XElement(wmts + "TileMatrix",
-                                    new XElement(ows + "Identifier", $"{z}"),
-                                    new XElement(wmts + "ScaleDenominator", (559082264.0287178 / Math.Pow(2, z)).ToString(CultureInfo.InvariantCulture)),
-                                    new XElement(wmts + "TopLeftCorner", "-180.0 90.0"),
-                                    new XElement(wmts + "TileWidth", "256"),
-                                    new XElement(wmts + "TileHeight", "256"),
-                                    new XElement(wmts + "MatrixWidth", ((int)Math.Pow(2, z)).ToString()),
-                                    new XElement(wmts + "MatrixHeight", ((int)Math.Pow(2, z)).ToString())
-                                )
-                            )
-                        ),
-
                         // Dynamically add Layer information
                         mapBox.Map.Layers.Select(layer =>
                         {
@@ -981,16 +926,8 @@ namespace WindowsFormsApp4
 
                                 // Style Definition
                                 new XElement(wmts + "Style",
-                                    new XElement(ows + "Identifier", "default"), // 使用统一的样式名称
-                                    new XElement(wmts + "LegendURL",
-                                        new XAttribute("format", "image/png"),
-                                        new XAttribute("width", "20"),
-                                        new XAttribute("height", "20"),
-                                        new XElement(ows + "OnlineResource",
-                                            new XAttribute(xlink + "type", "simple"),
-                                            new XAttribute(xlink + "href", $"http://localhost:8080/wms?service=WMS&request=GetLegendGraphic&format=image/png&width=20&height=20&layer={Uri.EscapeDataString(layer.LayerName)}")
-                                        )
-                                    )
+                                    new XAttribute("isDefault", "true"),
+                                    new XElement(ows + "Identifier", "default") // 使用统一的样式名称
                                 ),
 
                                 // Supported Formats
@@ -999,27 +936,53 @@ namespace WindowsFormsApp4
 
                                 // TileMatrixSetLink and TileMatrixSetLimits
                                 new XElement(wmts + "TileMatrixSetLink",
-                                    new XElement(wmts + "TileMatrixSet", "EPSG:4326"),
+                                    new XElement(wmts + "TileMatrixSet", supportedCrs),
                                     new XElement(wmts + "TileMatrixSetLimits",
-                                        GenerateTileMatrixLimitsXml()
+                                        GenerateTileMatrixLimitsXml(supportedCrs)
                                     )
                                 ),
 
                                 // ResourceURL Definitions
                                 new XElement(wmts + "ResourceURL", new XAttribute("format", "image/png"), new XAttribute("resourceType", "tile"),
-                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE=default&TILEMATRIX={{TileMatrix}}&TILECOL={{TileCol}}&TILEROW={{TileRow}}&FORMAT=image/png")
+                                     new XAttribute("template", $"http://localhost:8080/wmts?request=GetTile&style={{style}}&TileMatrixSet={{TileMatrixSet}}&TileMatrix={{TileMatrix}}&TileRow={{TileRow}}&TileCol={{TileCol}}&format=image/png")
                                 ),
                                 new XElement(wmts + "ResourceURL", new XAttribute("format", "image/jpeg"), new XAttribute("resourceType", "tile"),
-                                     new XAttribute("template", $"http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetTile&LAYER={Uri.EscapeDataString(layer.LayerName)}&STYLE=default&TILEMATRIX={{TileMatrix}}&TILECOL={{TileCol}}&TILEROW={{TileRow}}&FORMAT=image/jpeg")
+                                     new XAttribute("template", $"http://localhost:8080/wmts?request=GetTile&style={{style}}&TileMatrixSet={{TileMatrixSet}}&TileMatrix={{TileMatrix}}&TileRow={{TileRow}}&TileCol={{TileCol}}&format=image/jpeg")
                                 )
                             );
-                        }).Where(layer => layer != null) // 过滤掉可能的 null 图层
+                        }).Where(layer => layer != null),// 过滤掉可能的 null 图层
+                                                         // ----- TileMatrixSet ----- 
+                    new XElement(wmts + "TileMatrixSet",
+                        new XElement(ows + "Title", supportedCrs),
+                        new XElement(ows + "Abstract", $"{supportedCrs} projection"),
+                        new XElement(ows + "Identifier", supportedCrs),
+                        new XElement(ows + "SupportedCRS", $"urn:ogc:def:crs:{supportedCrs}"),
+
+                        // Define TileMatrix for each zoom level
+                        Enumerable.Range(0, 6).Select(z =>
+                            new XElement(wmts + "TileMatrix",
+                                new XElement(ows + "Identifier", $"{z}"),
+                                new XElement(ows + "ScaleDenominator", (CalculateScaleInMeters(mapBox.Map) / Math.Pow(2, z)).ToString(CultureInfo.InvariantCulture)),
+                                new XElement(ows + "TopLeftCorner", $"{mapBox.Map.Envelope.MaxY} {mapBox.Map.Envelope.MinX}"),
+                                new XElement(ows + "TileWidth", "256"),
+                                new XElement(ows + "TileHeight", "256"),
+                                new XElement(ows + "MatrixWidth", ((int)Math.Pow(2, z)).ToString()),
+                                new XElement(ows + "MatrixHeight", ((int)Math.Pow(2, z)).ToString())
+                            )
+                        )
+                    )
                     ),
 
-                    // ----- ServiceMetadataURL -----
+                    
+
+                    // ----- ServiceMetadataURL ----- 
                     new XElement(wmts + "ServiceMetadataURL",
                         new XAttribute(xlink + "type", "simple"),
                         new XAttribute(xlink + "href", "http://localhost:8080/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0")
+                    ),
+                    new XElement(wmts + "ServiceMetadataURL",
+                        new XAttribute(xlink + "type", "simple"),
+                        new XAttribute(xlink + "href", "http://localhost:8080/wmts?file=wmts.xml")
                     )
                 )
             );
@@ -1031,17 +994,14 @@ namespace WindowsFormsApp4
                 {
                     doc.Save(writer);
                 }
-                
             }
             catch (Exception ex)
             {
                 LogError($"生成 WMTS Capabilities XML 失败：{ex.Message}\n{ex.StackTrace}");
-                
             }
         }
 
-        
-        private IEnumerable<XElement> GenerateTileMatrixLimitsXml()
+        private IEnumerable<XElement> GenerateTileMatrixLimitsXml(string supportedCrs)
         {
             XNamespace wmts = "http://www.opengis.net/wmts/1.0";
             // 假设最大缩放级别为20
@@ -1059,6 +1019,54 @@ namespace WindowsFormsApp4
                 );
             });
         }
+        private double CalculateScaleInMeters(SharpMap.Map map)
+        {
+            // 获取地图的范围（Envelope），单位为度（EPSG:4326）
+            var envelope = map.Envelope;
+            double mapMinX = envelope.MinX;  // 经度范围（单位：度）
+            double mapMaxX = envelope.MaxX;  // 经度范围（单位：度）
+            double mapMinY = envelope.MinY;  // 纬度范围（单位：度）
+            double mapMaxY = envelope.MaxY;  // 纬度范围（单位：度）
+
+            // 获取地图的像素宽度和高度
+            int mapPixelWidth = 256;  // 图像宽度（像素）
+            int mapPixelHeight =256;  // 图像高度（像素）
+
+            // 计算每个像素对应的经度和纬度的实际距离
+            double deltaX = mapMaxX - mapMinX;  // 经度范围（单位：度）
+            double deltaY = mapMaxY - mapMinY;  // 纬度范围（单位：度）
+
+            // 计算地图在经度和纬度方向上每个像素对应的实际距离（单位：度）
+            double geoDistancePerPixelX = deltaX / mapPixelWidth;  // 水平方向（经度，每个像素的经度值）
+            double geoDistancePerPixelY = deltaY / mapPixelHeight;  // 垂直方向（纬度，每个像素的纬度值）
+
+            // 计算每个像素对应的实际地理距离（单位：米）
+            // 在纬度方向上，每度大约是 111公里 = 111000 米
+            double distancePerDegreeY = 111000;  // 每度纬度对应的实际地理距离（米）
+                                                 // 经度的实际距离会根据当前纬度进行缩放
+                                                 // 使用地图中心点的纬度来计算经度方向每度的实际地理距离
+            double centerLatitude = (mapMinY + mapMaxY) / 2;  // 地图中心的纬度
+            double distancePerDegreeX = 111000 * Math.Cos(centerLatitude * Math.PI / 180);  // 每度经度对应的实际地理距离（米）
+
+            // 计算每个像素对应的实际地理距离（米）
+            double geoDistancePerPixelXInMeters = geoDistancePerPixelX * distancePerDegreeX;  // 水平方向（米）
+            double geoDistancePerPixelYInMeters = geoDistancePerPixelY * distancePerDegreeY;  // 垂直方向（米）
+
+            // 输出每个像素对应的地理距离（米）
+            Console.WriteLine($"每个像素在水平方向的实际地理距离：{geoDistancePerPixelXInMeters} 米");
+            Console.WriteLine($"每个像素在垂直方向的实际地理距离：{geoDistancePerPixelYInMeters} 米");
+
+            
+            double scaleX = geoDistancePerPixelXInMeters;  // 水平方向的比例尺
+            double scaleY = geoDistancePerPixelYInMeters;  // 垂直方向的比例尺
+
+            // 取平均值作为比例尺
+            double averageScale = (scaleX + scaleY) / 2;
+
+            
+            return averageScale;
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             httpListener.Stop();
