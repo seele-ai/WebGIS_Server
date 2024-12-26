@@ -122,6 +122,28 @@ namespace WindowsFormsApp4
 
         private void ApplySldStyle(VectorLayer layer, string sldPath)
         {
+            //XmlDocument sldDoc = new XmlDocument();
+            //sldDoc.Load(sldPath);
+
+            //// 解析 Fill 和 Stroke 样式
+            //XmlNamespaceManager nsmgr = new XmlNamespaceManager(sldDoc.NameTable);
+            //nsmgr.AddNamespace("sld", "http://www.opengis.net/sld");
+            //nsmgr.AddNamespace("se", "http://www.opengis.net/se");
+
+            //XmlNode fillNode = sldDoc.SelectSingleNode("//se:Fill/se:SvgParameter[@name='fill']", nsmgr);
+            //if (fillNode != null)
+            //{
+            //    string fillColor = fillNode.InnerText;
+            //    layer.Style.Fill = new SolidBrush(ColorTranslator.FromHtml(fillColor));
+            //}
+
+            //XmlNode strokeNode = sldDoc.SelectSingleNode("//se:Stroke/se:SvgParameter[@name='stroke']", nsmgr);
+            //if (strokeNode != null)
+            //{
+            //    string strokeColor = strokeNode.InnerText;
+            //    layer.Style.Outline = new Pen(ColorTranslator.FromHtml(strokeColor));
+            //    layer.Style.EnableOutline = true;
+            //}
             XmlDocument sldDoc = new XmlDocument();
             sldDoc.Load(sldPath);
 
@@ -130,21 +152,64 @@ namespace WindowsFormsApp4
             nsmgr.AddNamespace("sld", "http://www.opengis.net/sld");
             nsmgr.AddNamespace("se", "http://www.opengis.net/se");
 
-            XmlNode fillNode = sldDoc.SelectSingleNode("//sld:Fill/sld:CssParameter[@name='fill']", nsmgr);
+            // 解析填充颜色及透明度
+            XmlNode fillNode = sldDoc.SelectSingleNode("//se:Fill/se:SvgParameter[@name='fill']", nsmgr);
+            XmlNode fillOpacityNode = sldDoc.SelectSingleNode("//se:Fill/se:SvgParameter[@name='fill-opacity']", nsmgr);
             if (fillNode != null)
             {
                 string fillColor = fillNode.InnerText;
-                layer.Style.Fill = new SolidBrush(ColorTranslator.FromHtml(fillColor));
+                float fillOpacity = 1.0f;
+                if (fillOpacityNode != null && float.TryParse(fillOpacityNode.InnerText, out float parsedOpacity))
+                {
+                    fillOpacity = parsedOpacity;
+                }
+                Color fillColorWithOpacity = Color.FromArgb((int)(fillOpacity * 255), ColorTranslator.FromHtml(fillColor));
+                layer.Style.Fill = new SolidBrush(fillColorWithOpacity);
             }
 
-            XmlNode strokeNode = sldDoc.SelectSingleNode("//sld:Stroke/sld:CssParameter[@name='stroke']", nsmgr);
+            // 解析边界样式
+            XmlNode strokeNode = sldDoc.SelectSingleNode("//se:Stroke/se:SvgParameter[@name='stroke']", nsmgr);
+            XmlNode strokeWidthNode = sldDoc.SelectSingleNode("//se:Stroke/se:SvgParameter[@name='stroke-width']", nsmgr);
+            XmlNode strokeLinejoinNode = sldDoc.SelectSingleNode("//se:Stroke/se:SvgParameter[@name='stroke-linejoin']", nsmgr);
+            XmlNode strokeLinecapNode = sldDoc.SelectSingleNode("//se:Stroke/se:SvgParameter[@name='stroke-linecap']", nsmgr);
+            XmlNode strokeOpacityNode = sldDoc.SelectSingleNode("//se:Stroke/se:SvgParameter[@name='stroke-opacity']", nsmgr);
+
             if (strokeNode != null)
             {
                 string strokeColor = strokeNode.InnerText;
-                layer.Style.Outline = new Pen(ColorTranslator.FromHtml(strokeColor));
+                float strokeOpacity = 1.0f;
+                if (strokeOpacityNode != null && float.TryParse(strokeOpacityNode.InnerText, out float parsedStrokeOpacity))
+                {
+                    strokeOpacity = parsedStrokeOpacity;
+                }
+
+                float strokeWidth = 1.0f;
+                if (strokeWidthNode != null && float.TryParse(strokeWidthNode.InnerText, out float parsedStrokeWidth))
+                {
+                    strokeWidth = parsedStrokeWidth;
+                }
+
+                string strokeLinejoin = strokeLinejoinNode?.InnerText ?? "miter"; // 默认值
+                string strokeLinecap = strokeLinecapNode?.InnerText ?? "butt";   // 默认值
+
+                Pen strokePen = new Pen(Color.FromArgb((int)(strokeOpacity * 255), ColorTranslator.FromHtml(strokeColor)), strokeWidth)
+                {
+                    LineJoin = strokeLinejoin.ToLower() == "bevel" ? System.Drawing.Drawing2D.LineJoin.Bevel :
+                               strokeLinejoin.ToLower() == "round" ? System.Drawing.Drawing2D.LineJoin.Round :
+                               System.Drawing.Drawing2D.LineJoin.Miter,
+                    StartCap = strokeLinecap.ToLower() == "round" ? System.Drawing.Drawing2D.LineCap.Round :
+                               strokeLinecap.ToLower() == "square" ? System.Drawing.Drawing2D.LineCap.Square :
+                               System.Drawing.Drawing2D.LineCap.Flat
+                };
+
+                layer.Style.Outline = strokePen;
                 layer.Style.EnableOutline = true;
             }
+
         }
+
+
+
         private void LayerManagerMenuItem_Click(object sender, EventArgs e)
         {
             // 实现图层管理功能
@@ -224,29 +289,32 @@ namespace WindowsFormsApp4
             //GenerateWmtsTiles(mapBox.Map, outputDirectory);
 
             string outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles");
-            //GenerateWmtsTiles(mapBox.Map, outputDirectory);
-            //string wmtsCapabilitiesPath = "D:\\datasource\\GISServer\\xml\\wmts1.xml";
-            //GenerateWmtsCapabilitiesXml(wmtsCapabilitiesPath);
+            GenerateWmtsTiles(mapBox.Map, outputDirectory);
+            string wmtsCapabilitiesPath = "D:\\datasource\\GISServer\\xml\\wmts1.xml";
+            GenerateWmtsCapabilitiesXml(wmtsCapabilitiesPath);
         }
         private void GenerateWmtsTiles(SharpMap.Map map, string outputDirectory)
         {
             int tileSize = 256; // 每个瓦片的大小（像素）
-            int zoomLevels = 5; // 生成的缩放级别数量（0 到 4）
+            int zoomLevels = 11; // 生成的缩放级别数量（0 到 4）
             int processedTiles = 0;
-            // 获取地图的范围（Envelope）
-            var envelope = map.Envelope;
 
+            // 计算地图的总范围（在EPSG:4326坐标系下，全球的经纬度范围）
+            double minX = -180; // 经度范围：-180
+            double maxX = 180;  // 经度范围：180
+            double minY = -90;  // 纬度范围：-90
+            double maxY = 90;   // 纬度范围：90
 
             // 计算地图的宽度和高度
-            double mapWidth = envelope.Width;
-            double mapHeight = envelope.Height;
+            double mapWidth = maxX - minX;
+            double mapHeight = maxY - minY;
 
             // 设置进度条的最大值
             int totalTiles = 0;
             for (int zoom = 0; zoom < zoomLevels; zoom++)
             {
                 int tilesPerSide = (int)Math.Pow(2, zoom);
-                totalTiles += tilesPerSide * tilesPerSide;
+                totalTiles += tilesPerSide * tilesPerSide*2;
             }
             progressBar.Maximum = totalTiles;
             progressBar.Value = 0;
@@ -257,22 +325,29 @@ namespace WindowsFormsApp4
                 int tilesPerSide = (int)Math.Pow(2, zoom); // 每边的瓦片数量为2的zoom次方
 
                 // 计算每个瓦片的地理范围
-                double tileWidth = mapWidth / tilesPerSide;
+                double tileWidth = mapWidth / tilesPerSide/2;
                 double tileHeight = mapHeight / tilesPerSide;
 
                 // 遍历每一列和每一行的瓦片
-                for (int x = 0; x < tilesPerSide; x++)
+                for (int x = 0; x < tilesPerSide*2; x++)
                 {
                     for (int y = 0; y < tilesPerSide; y++)
                     {
+                        // 更新进度条
+                        processedTiles++;
+                        progressBar.Value = processedTiles;
                         // 计算当前瓦片的地理范围
                         var tileEnvelope = new GeoAPI.Geometries.Envelope(
-                            envelope.MinX + x * tileWidth,
-                            envelope.MinX + (x + 1) * tileWidth,
-                            envelope.MinY + y * tileHeight,
-                            envelope.MinY + (y + 1) * tileHeight
+                            minX + x * tileWidth,
+                            minX + (x + 1) * tileWidth,
+                            maxY - (y + 1) * tileHeight, // 注意：y轴是倒过来的，因为Y坐标在地图中是反向的
+                            maxY - y * tileHeight
                         );
-
+                        // 预先判断瓦片区域是否包含数据
+                        if (!HasDataInEnvelope(tileEnvelope))
+                        {
+                            continue; // 如果该瓦片没有数据，跳过渲染
+                        }
                         // 创建一个新的地图对象用于渲染当前瓦片
                         var tileMap = new SharpMap.Map(new Size(tileSize, tileSize))
                         {
@@ -296,7 +371,7 @@ namespace WindowsFormsApp4
                             {
                                 tileMap.RenderMap(graphics);
                             }
-
+                           
                             // 构建瓦片的保存路径，按照缩放级别/列/行的结构
                             string tilePath = Path.Combine(outputDirectory, zoom.ToString(), x.ToString(), y.ToString() + ".png");
                             Directory.CreateDirectory(Path.GetDirectoryName(tilePath));
@@ -305,17 +380,30 @@ namespace WindowsFormsApp4
                             bitmap.Save(tilePath, ImageFormat.Png);
                         }
 
-                        // 更新进度条
-                        processedTiles++;
-                        progressBar.Value = processedTiles;
+                        
                     }
                 }
             }
 
             // 切片完成提示
             MessageBox.Show("瓦片生成完成！");
-
         }
+        // 判断图像是否为空白
+        
+        private bool HasDataInEnvelope(GeoAPI.Geometries.Envelope tileEnvelope)
+        {
+            // 你可以通过检查图层的有效数据范围来判断
+            foreach (var layer in mapBox.Map.Layers)
+            {
+                // 如果图层的范围和当前瓦片重叠且包含数据，则说明该区域有数据
+                if (layer.Envelope.Intersects(tileEnvelope))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void StartHttpServer()
         {
             httpListener = new HttpListener();
@@ -543,17 +631,18 @@ namespace WindowsFormsApp4
                 x = x.Replace("{", "").Replace("}", "");
                 y = y.Replace("{", "").Replace("}", "");
 
-                int x1 = int.Parse(x);
-                int y1=int.Parse(y);
-                y1 = (int)Math.Pow(2, int.Parse(zoom)) - 1 - y1;
+                //int x1 = int.Parse(x);
+                //int y1=int.Parse(y);
+                //y1 = (int)Math.Pow(2, int.Parse(zoom)) - 1 - y1;
 
-                int pad = 0;
-                if (int.Parse(zoom) <= 5) pad = 2;
-                else if (int.Parse(zoom) <= 11) pad = 4;
-                else pad = 6;
+                //int pad = 0;
+                //if (int.Parse(zoom) <= 5) pad = 2;
+                //else if (int.Parse(zoom) <= 11) pad = 4;
+                //else pad = 6;
 
-                // 使用修正后的路径构建完整路径
-                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "D:\\datasource\\beijing_gis_osm_landuse_a_free_1", $"EPSG_900913_{zoom}", $"{x1.ToString().PadLeft(pad, '0')}_{y1.ToString().PadLeft(pad, '0')}.png");
+                //// 使用修正后的路径构建完整路径
+                //string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "D:\\datasource\\beijing_gis_osm_landuse_a_free_1", $"EPSG_900913_{zoom}", $"{x1.ToString().PadLeft(pad, '0')}_{y1.ToString().PadLeft(pad, '0')}.png");
+                string tilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "WMTS_Tiles", $"{zoom}", $"{x}",$"{y}.png");
                 if (File.Exists(tilePath))
                 {
                     context.Response.ContentType = "image/png";
@@ -591,7 +680,7 @@ namespace WindowsFormsApp4
                 //return cachedCapabilitiesXml;
             //}
             // 返回 WMTS GetCapabilities 响应的 XML 字符串
-            string filePath = "D:\\datasource\\GISServer\\xml\\wmts.xml";
+            string filePath = "D:\\datasource\\GISServer\\xml\\wmts1.xml";
             // 生成Capabilities XML的逻辑
             string capabilitiesXml = File.ReadAllText(filePath);
             // 更新缓存
@@ -863,7 +952,7 @@ namespace WindowsFormsApp4
                     new XElement(ows + "ServiceProvider",
                         new XElement(ows + "ProviderName", "http://geoserver.org/com"),
                         new XElement(ows + "ProviderSite",
-                            new XAttribute(xlink + "type", "simple"),
+                            
                             new XAttribute(xlink + "href", "http://geoserver.org")
                         ),
                         new XElement(ows + "ServiceContact",
@@ -887,7 +976,7 @@ namespace WindowsFormsApp4
                             new XElement(ows + "DCP",
                                 new XElement(ows + "HTTP",
                                     new XElement(ows + "Get",
-                                        new XAttribute(xlink + "type", "simple"),
+                                        
                                         new XAttribute(xlink + "href", "http://localhost:8080/wmts?SERVICE=WMTS&"),
                                         new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
                                             new XElement(ows + "AllowedValues",
@@ -904,7 +993,7 @@ namespace WindowsFormsApp4
                             new XElement(ows + "DCP",
                                 new XElement(ows + "HTTP",
                                     new XElement(ows + "Get",
-                                        new XAttribute(xlink + "type", "simple"),
+                                        
                                         new XAttribute(xlink + "href", "http://localhost:8080/wmts?SERVICE=WMTS&"),
                                         new XElement(ows + "Constraint", new XAttribute("name", "GetEncoding"),
                                             new XElement(ows + "AllowedValues",
@@ -930,7 +1019,10 @@ namespace WindowsFormsApp4
 
                             return new XElement(wmts + "Layer",
                                 new XElement(ows + "Title", layer.LayerName), // 如 "水体"
-                                new XElement(ows + "Abstract", $"这是图层 {layer.LayerName} 的描述。"),
+                                new XElement(ows + "WGS84BoundingBox",
+                                    new XElement(ows + "LowerCorner", $"{layer.Envelope.MinX} {layer.Envelope.MinY}"),
+                                    new XElement(ows + "UpperCorner", $"{layer.Envelope.MaxX} {layer.Envelope.MaxY}")
+                                ),
                                 new XElement(ows + "Identifier", layer.LayerName), // 如 "BJ:水体"
 
                                 // Style Definition
@@ -962,21 +1054,18 @@ namespace WindowsFormsApp4
                         }).Where(layer => layer != null),// 过滤掉可能的 null 图层
                                                          // ----- TileMatrixSet ----- 
                     new XElement(wmts + "TileMatrixSet",
-                        new XElement(ows + "Title", supportedCrs),
-                        new XElement(ows + "Abstract", $"{supportedCrs} projection"),
                         new XElement(ows + "Identifier", supportedCrs),
-                        new XElement(ows + "SupportedCRS", $"urn:ogc:def:crs:{supportedCrs}"),
+                        new XElement(ows + "SupportedCRS", $"urn:ogc:def:crs:EPSG::4326"),
 
-                        // Define TileMatrix for each zoom level
-                        Enumerable.Range(0, 6).Select(z =>
-                            new XElement(wmts + "TileMatrix",
-                                new XElement(ows + "Identifier", $"{z}"),
-                                new XElement(ows + "ScaleDenominator", (CalculateScaleInMeters(mapBox.Map) / Math.Pow(2, z)).ToString(CultureInfo.InvariantCulture)),
-                                new XElement(ows + "TopLeftCorner", $"{mapBox.Map.Envelope.MaxY} {mapBox.Map.Envelope.MinX}"),
-                                new XElement(ows + "TileWidth", "256"),
-                                new XElement(ows + "TileHeight", "256"),
-                                new XElement(ows + "MatrixWidth", ((int)Math.Pow(2, z)).ToString()),
-                                new XElement(ows + "MatrixHeight", ((int)Math.Pow(2, z)).ToString())
+                       // Define TileMatrix for each zoom level
+                       Enumerable.Range(0, 22).Select(z => new XElement(wmts + "TileMatrix",
+                new XElement(ows + "Identifier", $"{z}"),
+                new XElement(wmts + "ScaleDenominator", GetScaleDenominator(z)),
+                new XElement(wmts + "TopLeftCorner", "90.0 -180.0"),
+                new XElement(wmts + "TileWidth", 256),
+                new XElement(wmts + "TileHeight", 256),
+                new XElement(wmts + "MatrixWidth", GetMatrixWidth(z)),
+                new XElement(wmts + "MatrixHeight", GetMatrixHeight(z))
                             )
                         )
                     )
@@ -1010,70 +1099,100 @@ namespace WindowsFormsApp4
             }
         }
 
-        private IEnumerable<XElement> GenerateTileMatrixLimitsXml(string supportedCrs)
+        private readonly string baseDirectory = "WMTS_tiles"; // 设置文件夹路径
+
+        public IEnumerable<XElement> GenerateTileMatrixLimitsXml(string supportedCrs)
         {
             XNamespace wmts = "http://www.opengis.net/wmts/1.0";
-            // 假设最大缩放级别为20
-            int maxZoomLevel = 5;
+            int maxZoomLevel = 10; // 假设最大缩放级别为5
 
             return Enumerable.Range(0, maxZoomLevel + 1).Select(z =>
             {
                 int tilesPerSide = (int)Math.Pow(2, z);
+                var zoomDirectory = Path.Combine(baseDirectory, $"{z}");
+
+                // 获取该缩放级别文件夹中的所有子文件夹
+                var subDirectories = Directory.GetDirectories(zoomDirectory);
+
+                // 初始化行列的最小值和最大值
+                int minTileCol = int.MaxValue;
+                int maxTileCol = int.MinValue;
+                int minTileRow = int.MaxValue;
+                int maxTileRow = int.MinValue;
+
+                // 遍历每个子文件夹（对应列）
+                foreach (var subDir in subDirectories)
+                {
+                    // 假设文件名格式为：`X_Y.png` 或类似的格式
+                    var subDirName = Path.GetFileNameWithoutExtension(subDir);
+                    int x = int.Parse(subDirName); 
+                    minTileCol = Math.Min(minTileCol, x);
+                    maxTileCol = Math.Max(maxTileCol, x);
+                        
+                    
+
+
+                    var files = Directory.GetFiles(subDir);
+                    // 遍历每个文件（对应行）
+                    foreach (var file in files)
+                    {
+                        // 假设文件名格式为：`X_Y.png` 或类似的格式
+                        var fileName = Path.GetFileNameWithoutExtension(file);
+                        int y = int.Parse(fileName);
+                        minTileRow = Math.Min(minTileRow, y);
+                        maxTileRow = Math.Max(maxTileRow, y);
+
+                    }
+                }
+
+                // 生成TileMatrixLimits的XML元素
                 return new XElement(wmts + "TileMatrixLimits",
                     new XElement(wmts + "TileMatrix", $"{z}"),
-                    new XElement(wmts + "MinTileRow", "0"),
-                    new XElement(wmts + "MaxTileRow", (tilesPerSide - 1).ToString()),
-                    new XElement(wmts + "MinTileCol", "0"),
-                    new XElement(wmts + "MaxTileCol", (tilesPerSide - 1).ToString())
+                    new XElement(wmts + "MinTileRow", minTileRow.ToString()),
+                    new XElement(wmts + "MaxTileRow", maxTileRow.ToString()),
+                    new XElement(wmts + "MinTileCol", minTileCol.ToString()),
+                    new XElement(wmts + "MaxTileCol", maxTileCol.ToString())
                 );
             });
         }
-        private double CalculateScaleInMeters(SharpMap.Map map)
+        // 获取ScaleDenominator
+        private double GetScaleDenominator(int zoomLevel)
         {
-            // 获取地图的范围（Envelope），单位为度（EPSG:4326）
-            var envelope = map.Envelope;
-            double mapMinX = envelope.MinX;  // 经度范围（单位：度）
-            double mapMaxX = envelope.MaxX;  // 经度范围（单位：度）
-            double mapMinY = envelope.MinY;  // 纬度范围（单位：度）
-            double mapMaxY = envelope.MaxY;  // 纬度范围（单位：度）
+            double[] scaleDenominators = new double[]
+            {
+            2.795411320143589E8, 1.3977056600717944E8, 6.988528300358972E7, 3.494264150179486E7,
+            1.747132075089743E7, 8735660.375448715, 4367830.1877243575, 2183915.0938621787,
+            1091957.5469310894, 545978.7734655447, 272989.38673277234, 136494.69336638617,
+            68247.34668319309, 34123.67334159654, 17061.83667079827, 8530.918335399136,
+            4265.459167699568, 2132.729583849784, 1066.364791924892, 533.182395962446,
+            266.591197981223, 133.2955989906115
+            };
 
-            // 获取地图的像素宽度和高度
-            int mapPixelWidth = 256;  // 图像宽度（像素）
-            int mapPixelHeight =256;  // 图像高度（像素）
+            return scaleDenominators[zoomLevel];
+        }
 
-            // 计算每个像素对应的经度和纬度的实际距离
-            double deltaX = mapMaxX - mapMinX;  // 经度范围（单位：度）
-            double deltaY = mapMaxY - mapMinY;  // 纬度范围（单位：度）
+        // 获取MatrixWidth
+        private int GetMatrixWidth(int zoomLevel)
+        {
+            int[] matrixWidths = new int[]
+            {
+            2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536,
+            131072, 262144, 524288, 1048576, 2097152, 4194304
+            };
 
-            // 计算地图在经度和纬度方向上每个像素对应的实际距离（单位：度）
-            double geoDistancePerPixelX = deltaX / mapPixelWidth;  // 水平方向（经度，每个像素的经度值）
-            double geoDistancePerPixelY = deltaY / mapPixelHeight;  // 垂直方向（纬度，每个像素的纬度值）
+            return matrixWidths[zoomLevel];
+        }
 
-            // 计算每个像素对应的实际地理距离（单位：米）
-            // 在纬度方向上，每度大约是 111公里 = 111000 米
-            double distancePerDegreeY = 111000;  // 每度纬度对应的实际地理距离（米）
-                                                 // 经度的实际距离会根据当前纬度进行缩放
-                                                 // 使用地图中心点的纬度来计算经度方向每度的实际地理距离
-            double centerLatitude = (mapMinY + mapMaxY) / 2;  // 地图中心的纬度
-            double distancePerDegreeX = 111000 * Math.Cos(centerLatitude * Math.PI / 180);  // 每度经度对应的实际地理距离（米）
+        // 获取MatrixHeight
+        private int GetMatrixHeight(int zoomLevel)
+        {
+            int[] matrixHeights = new int[]
+            {
+            1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
+            65536, 131072, 262144, 524288, 1048576, 2097152
+            };
 
-            // 计算每个像素对应的实际地理距离（米）
-            double geoDistancePerPixelXInMeters = geoDistancePerPixelX * distancePerDegreeX;  // 水平方向（米）
-            double geoDistancePerPixelYInMeters = geoDistancePerPixelY * distancePerDegreeY;  // 垂直方向（米）
-
-            // 输出每个像素对应的地理距离（米）
-            Console.WriteLine($"每个像素在水平方向的实际地理距离：{geoDistancePerPixelXInMeters} 米");
-            Console.WriteLine($"每个像素在垂直方向的实际地理距离：{geoDistancePerPixelYInMeters} 米");
-
-            
-            double scaleX = geoDistancePerPixelXInMeters;  // 水平方向的比例尺
-            double scaleY = geoDistancePerPixelYInMeters;  // 垂直方向的比例尺
-
-            // 取平均值作为比例尺
-            double averageScale = (scaleX + scaleY) / 2;
-
-            
-            return averageScale;
+            return matrixHeights[zoomLevel];
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
